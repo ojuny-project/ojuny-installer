@@ -19,9 +19,11 @@ let
   };
 
   calamaresPkg = pkgs.calamares.overrideAttrs (previous: {
-    patches = lib.filter (patch: !(lib.hasInfix "dont-allow-manual-luks" (toString patch))) (
-      previous.patches or [ ]
-    );
+    patches =
+      lib.filter (patch: !(lib.hasInfix "dont-allow-manual-luks" (toString patch))) (
+        previous.patches or [ ]
+      )
+      ++ [ ../packages/calamares-compact-locale.patch ];
   });
 
   calamares = pkgs.callPackage ../packages/calamares-ojuny.nix {
@@ -160,9 +162,16 @@ in
 
   ojuny.plymouth.enable = lib.mkForce false;
 
+  environment.etc."ojuny/target-toplevels".text = lib.concatMapStrings (path: path + "\n") [
+    target.config.system.build.toplevel
+    targetLatest.config.system.build.toplevel
+    pkgs.stdenv
+  ];
+
   isoImage.storeContents = lib.mkAfter [
     target.config.system.build.toplevel
     targetLatest.config.system.build.toplevel
+    pkgs.stdenv
     pkgs.grub2
     pkgs.grub2_efi
     pkgs.efibootmgr

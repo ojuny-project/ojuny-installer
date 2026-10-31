@@ -10,9 +10,8 @@ This file records results for the three attended Calamares ISOs: main
 
 ## What the attended flow covers
 
-The Calamares sequence is: welcome, welcome notes, template, locale notes,
-locale, keyboard notes, keyboard, user notes, users, git origin, partition
-notes, partition, summary notes, summary, install, finished notes, finished.
+The Calamares sequence is: welcome, template, locale, keyboard, users, git
+origin, partition, summary, install, finished.
 
 - The template page owns bundled versus prepared, template URL, token, branch
   and the host detection explanation.

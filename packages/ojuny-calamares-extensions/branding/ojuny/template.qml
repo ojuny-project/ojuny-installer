@@ -11,9 +11,11 @@ Rectangle {
     color: "#2d353b"
 
     ColumnLayout {
-        anchors.fill: parent
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
         anchors.margins: 24
-        spacing: Kirigami.Units.largeSpacing
+        spacing: 8
 
         Text {
             Layout.fillWidth: true

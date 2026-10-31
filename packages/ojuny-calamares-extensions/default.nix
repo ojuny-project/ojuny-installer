@@ -31,7 +31,6 @@ stdenvNoCC.mkDerivation {
     cp config/modules/origin.conf $out/etc/calamares/modules/origin.conf
     cp config/modules/users.conf $out/etc/calamares/modules/users.conf
     cp config/modules/welcome.conf $out/etc/calamares/modules/welcome.conf
-    cp config/modules/notes-*.conf $out/etc/calamares/modules/
     ${lib.optionalString offline ''
       sed -i '/^    - internet$/d' $out/etc/calamares/modules/welcome.conf
     ''}

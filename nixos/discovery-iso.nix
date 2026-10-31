@@ -26,9 +26,11 @@ let
       });
 
   calamaresPkg = pkgs.calamares.overrideAttrs (previous: {
-    patches = lib.filter (patch: !(lib.hasInfix "dont-allow-manual-luks" (toString patch))) (
-      previous.patches or [ ]
-    );
+    patches =
+      lib.filter (patch: !(lib.hasInfix "dont-allow-manual-luks" (toString patch))) (
+        previous.patches or [ ]
+      )
+      ++ [ ../packages/calamares-compact-locale.patch ];
   });
 
   calamares = pkgs.callPackage ../packages/calamares-ojuny.nix {

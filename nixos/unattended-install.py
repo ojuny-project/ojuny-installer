@@ -393,6 +393,21 @@ def unmount():
     subprocess.run(["umount", "-R", MOUNT], check=False)
 
 
+def preload_store_paths(mount):
+    paths = []
+    for name in ("/etc/ojuny/flake-inputs", "/etc/ojuny/target-toplevels"):
+        if not os.path.exists(name):
+            continue
+        with open(name) as handle:
+            paths += [line.strip() for line in handle if line.strip()]
+
+    if not paths:
+        return
+
+    log("preloading {} store paths".format(len(paths)))
+    run(["nix", "copy", "--no-check-sigs", "--to", mount] + paths)
+
+
 def install():
     settings = read_settings()
     disk = settings["disk"]
@@ -472,6 +487,9 @@ def install():
     apply_settings(target, settings, username, host, runtime_flake)
     regenerate_hardware(target, firmware, disk)
     git_init(target)
+
+    if OFFLINE:
+        preload_store_paths(MOUNT)
 
     log("installing NixOS from {}#{}".format(target, host))
     install_command = [

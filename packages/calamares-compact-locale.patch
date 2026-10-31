@@ -1,0 +1,15 @@
+--- a/src/modules/locale/LocalePage.cpp
++++ b/src/modules/locale/LocalePage.cpp
+@@ -81,11 +81,10 @@ LocalePage::LocalePage( Config* config, QWidget* parent )
+     formatsLayout->addWidget( m_formatsChangeButton );
+ 
+     mainLayout->addLayout( tzwLayout );
+-    mainLayout->addStretch();
+     mainLayout->addLayout( zoneAndRegionLayout );
+-    mainLayout->addStretch();
+     mainLayout->addLayout( localeLayout );
+     mainLayout->addLayout( formatsLayout );
++    mainLayout->addStretch();
+     setMinimumWidth( m_tzWidget->width() );
+     setLayout( mainLayout );
+ 

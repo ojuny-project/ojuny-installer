@@ -835,6 +835,23 @@ def write_gui_config(home, clone, host, shell):
     run_command([cmd("pkexec"), cmd("chown"), "1000:100", config_dir, config_path])
 
 
+def preload_store_paths(root):
+    paths = []
+    for name in ("/etc/ojuny/flake-inputs", "/etc/ojuny/target-toplevels"):
+        if not os.path.exists(name):
+            continue
+        with open(name) as handle:
+            paths += [line.strip() for line in handle if line.strip()]
+
+    if not paths:
+        return
+
+    libcalamares.utils.debug(
+        "Ojuny: copying {} store paths to the target store".format(len(paths))
+    )
+    run_command([cmd("pkexec"), cmd("nix"), "copy", "--no-check-sigs", "--to", root] + paths)
+
+
 def install():
     global_storage = libcalamares.globalstorage
     job_configuration = libcalamares.job.configuration
@@ -864,6 +881,7 @@ def install():
         "nixos-generate-config",
         "nixos-install",
         "nixos-enter",
+        "nix",
         "git",
         "env",
     ]
@@ -1072,6 +1090,10 @@ def install():
 
     if extra_file:
         os.unlink(extra_file)
+
+    if os.path.exists("/etc/ojuny/offline"):
+        libcalamares.job.setprogress(0.30)
+        preload_store_paths(root)
 
     libcalamares.job.setprogress(0.32)
     libcalamares.utils.debug("Ojuny: starting nixos-install")
