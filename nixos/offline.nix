@@ -6,27 +6,13 @@
 
 let
   template = inputs.ojuny-template;
-  templateFlake = builtins.getFlake (builtins.unsafeDiscardStringContext (toString template.outPath));
+  lock = builtins.fromJSON (builtins.readFile (template.outPath + "/flake.lock"));
 
-  flakeInputs = [
-    template.outPath
-  ]
-  ++ map (node: node.input.outPath) (
-    builtins.genericClosure {
-      startSet = [
-        {
-          key = templateFlake.outPath;
-          input = templateFlake;
-        }
-      ];
-      operator =
-        node:
-        map (input: {
-          key = input.outPath;
-          inherit input;
-        }) (builtins.attrValues (node.input.inputs or { }));
-    }
+  lockedInputs = builtins.filter (node: node ? locked && node.locked ? narHash) (
+    builtins.attrValues lock.nodes
   );
+
+  flakeInputs = [ template.outPath ] ++ map (node: builtins.fetchTree node.locked) lockedInputs;
 in
 {
   nix.settings.substituters = lib.mkForce [ ];
