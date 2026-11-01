@@ -210,12 +210,16 @@ in
     target.config.system.build.toplevel
     targetLatest.config.system.build.toplevel
     pkgs.stdenv
+    pkgs.microcodeIntel
+    pkgs.microcodeAmd
   ];
 
   isoImage.storeContents = lib.mkAfter [
     target.config.system.build.toplevel
     targetLatest.config.system.build.toplevel
     pkgs.stdenv
+    pkgs.microcodeIntel
+    pkgs.microcodeAmd
     pkgs.grub2
     pkgs.grub2_efi
     pkgs.efibootmgr

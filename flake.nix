@@ -62,20 +62,14 @@
       fullTarget = lib.nixosSystem {
         inherit system;
         specialArgs = { inherit inputs; };
-        modules = [
-          ./nixos/full-system.nix
-          ./nixos/full-hardware.nix
-          ./nixos/target-bootloader.nix
-        ];
+        modules = [ inputs.ojuny-template.modules.nixos.host-imports ];
       };
 
       fullTargetLatest = lib.nixosSystem {
         inherit system;
         specialArgs = { inherit inputs; };
         modules = [
-          ./nixos/full-system.nix
-          ./nixos/full-hardware.nix
-          ./nixos/target-bootloader.nix
+          inputs.ojuny-template.modules.nixos.host-imports
           ({ lib, pkgs, ... }: {
             boot.kernelPackages = lib.mkForce pkgs.linuxPackages_latest;
           })
