@@ -148,6 +148,18 @@ in
 
   services.upower.enable = true;
 
+  # Temporary remote debugging access for the offline ISO.
+  services.openssh = {
+    enable = true;
+    settings.PermitRootLogin = "prohibit-password";
+  };
+
+  users.users.root.openssh.authorizedKeys.keys = [
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA4aHtgEXDU+Hoy3jBzEx42C1stuRo2Rv2jLX4Vc6M9Z ojuny-test-temporary"
+  ];
+
+  networking.firewall.allowedTCPPorts = [ 22 ];
+
   systemd.user.services.ojuny-install = {
     description = "Ojuny Calamares installer";
     wantedBy = [ "mango-session.target" ];
