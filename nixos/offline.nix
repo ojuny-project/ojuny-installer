@@ -5,12 +5,18 @@
 }:
 
 let
-  flakeInputs = map (node: node.input.outPath) (
+  template = inputs.ojuny-template;
+  templateFlake = builtins.getFlake (builtins.unsafeDiscardStringContext (toString template.outPath));
+
+  flakeInputs = [
+    template.outPath
+  ]
+  ++ map (node: node.input.outPath) (
     builtins.genericClosure {
       startSet = [
         {
-          key = inputs.ojuny-template.outPath;
-          input = inputs.ojuny-template;
+          key = templateFlake.outPath;
+          input = templateFlake;
         }
       ];
       operator =

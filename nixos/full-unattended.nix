@@ -209,17 +209,19 @@ in
   environment.etc."ojuny/target-toplevels".text = lib.concatMapStrings (path: path + "\n") [
     target.config.system.build.toplevel
     targetLatest.config.system.build.toplevel
-    pkgs.stdenv
-    pkgs.microcode-intel
-    pkgs.microcode-amd
+    target.pkgs.stdenv
+    target.pkgs.microcode-intel
+    target.pkgs.microcode-amd
+    target.pkgs.base16-schemes
   ];
 
   isoImage.storeContents = lib.mkAfter [
     target.config.system.build.toplevel
     targetLatest.config.system.build.toplevel
-    pkgs.stdenv
-    pkgs.microcode-intel
-    pkgs.microcode-amd
+    target.pkgs.stdenv
+    target.pkgs.microcode-intel
+    target.pkgs.microcode-amd
+    target.pkgs.base16-schemes
     pkgs.grub2
     pkgs.grub2_efi
     pkgs.efibootmgr
