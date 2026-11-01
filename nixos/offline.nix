@@ -12,7 +12,24 @@ let
     builtins.attrValues lock.nodes
   );
 
-  flakeInputs = [ template.outPath ] ++ map (node: builtins.fetchTree node.locked) lockedInputs;
+  fetchLocked =
+    locked:
+    if locked ? dir then
+      builtins.path {
+        path = "${
+          builtins.fetchTree (
+            removeAttrs locked [
+              "dir"
+              "narHash"
+            ]
+          )
+        }/${locked.dir}";
+        name = "source";
+      }
+    else
+      builtins.fetchTree locked;
+
+  flakeInputs = [ template.outPath ] ++ map (node: fetchLocked node.locked) lockedInputs;
 in
 {
   nix.settings.substituters = lib.mkForce [ ];

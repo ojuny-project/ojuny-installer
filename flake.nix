@@ -222,7 +222,10 @@
                 ''
                   python3 -c 'import ast, sys; ast.parse(open(sys.argv[1]).read())' \
                     ${./nixos/unattended-install.py}
-                  shellcheck -S warning ${./scripts/make-unattended-iso.sh}
+                  shellcheck -S warning \
+                    ${./scripts/make-unattended-iso.sh} \
+                    ${./scripts/check-offline-install-closure.sh} \
+                    ${./scripts/check-offline-install-vm.sh}
                   touch $out
                 '';
 
@@ -249,6 +252,23 @@
                   echo "offline unattended ISO: $size bytes"
                   test "$size" -le 8000000000 || { echo "offline unattended ISO exceeds 8 GB"; exit 1; }
                   test "$size" -le 7400000000 || echo "warning: offline unattended ISO exceeds 7.4 GB"
+                  touch $out
+                '';
+
+            offline-install-closure =
+              pkgs.runCommand "check-offline-install-closure"
+                {
+                  nativeBuildInputs = [
+                    pkgs.git
+                    pkgs.nix
+                  ];
+                  TEMPLATE = "${inputs.ojuny-template}";
+                  PREPARE_REPO = "${inputs.ojuny-template.packages.${system}.prepare-repo}";
+                  FLAKE_INPUTS = fullIso.config.environment.etc."ojuny/flake-inputs".text;
+                }
+                ''
+                  export HOME=$TMPDIR
+                  bash ${./scripts/check-offline-install-closure.sh}
                   touch $out
                 '';
           };
