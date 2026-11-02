@@ -1144,11 +1144,11 @@
         "stylix": "stylix"
       },
       "locked": {
-        "lastModified": 1793611809,
-        "narHash": "sha256-xxfwKQQJ8IteuSM7UGFggMFChePgFBe+wUQ0H8UIFFY=",
+        "lastModified": 1793612808,
+        "narHash": "sha256-/R8ANlCaaAD196fuRWFOq1Kql8iAgwpaG6Rpqe1rydM=",
         "owner": "ojuny-project",
         "repo": "ojuny-template",
-        "rev": "e82987357f2450bd6c767ee990e4884b6a63ae71",
+        "rev": "4b0de755c254409745c9b06eb0c63ea6f08a25ad",
         "type": "github"
       },
       "original": {
