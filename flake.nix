@@ -261,10 +261,18 @@
                   nativeBuildInputs = [
                     pkgs.git
                     pkgs.nix
+                    pkgs.python3
                   ];
                   TEMPLATE = "${inputs.ojuny-template}";
                   PREPARE_REPO = "${inputs.ojuny-template.packages.${system}.prepare-repo}";
                   FLAKE_INPUTS = fullIso.config.environment.etc."ojuny/flake-inputs".text;
+                  FLAKE_INPUT_PATHS = fullIso.config.environment.etc."ojuny/flake-input-paths".text;
+                  EVAL_CLOSURE = "${pkgs.closureInfo {
+                    rootPaths = [
+                      fullTarget.pkgs.stdenv
+                      fullTarget.pkgs.base16-schemes
+                    ];
+                  }}";
                 }
                 ''
                   export HOME=$TMPDIR

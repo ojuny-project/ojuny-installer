@@ -55,7 +55,7 @@ EOF
   "host": "fixture-host",
   "username": "fixture",
   "fullName": "Fixture Account",
-  "hashedPassword": "!",
+  "hashedPassword": "$6$VHOzJbAlJ4mzcEMh$0HBRrS/wD8f8t6VqdNIpIpc54sImrnoHEMyp8PCVG/22i0nDxeGLNyWd6YyyWsCCRe33P.UTC7AL6yiNcMKHH0",
   "sshKeys": [],
   "shell": "bash",
   "timezone": "UTC",

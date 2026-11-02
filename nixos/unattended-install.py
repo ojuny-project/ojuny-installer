@@ -408,6 +408,49 @@ def preload_store_paths(mount):
     run(["nix", "copy", "--no-check-sigs", "--to", mount] + paths)
 
 
+def rewrite_offline_inputs(flake):
+    mapping_path = "/etc/ojuny/flake-input-paths"
+    lock_path = os.path.join(flake, "flake.lock")
+    if not os.path.exists(mapping_path) or not os.path.exists(lock_path):
+        return None
+    with open(mapping_path) as handle:
+        mapping = json.load(handle)
+    if not mapping:
+        return None
+    with open(lock_path) as handle:
+        original = handle.read()
+    lock = json.loads(original)
+    for name, path in mapping.items():
+        node = lock.get("nodes", {}).get(name)
+        if node is None or "locked" not in node:
+            continue
+        nar_hash = output(
+            [
+                "nix",
+                "--extra-experimental-features",
+                "nix-command",
+                "hash",
+                "path",
+                "--sri",
+                path,
+            ]
+        )
+        node["locked"] = {"type": "path", "path": path, "narHash": nar_hash}
+    with open(lock_path, "w") as handle:
+        json.dump(lock, handle, indent=2)
+        handle.write("\n")
+    log("rewrote {} flake inputs for offline evaluation".format(len(mapping)))
+    return lock_path, original
+
+
+def restore_offline_inputs(rewrite):
+    if rewrite is None:
+        return
+    lock_path, original = rewrite
+    with open(lock_path, "w") as handle:
+        handle.write(original)
+
+
 def install():
     settings = read_settings()
     disk = settings["disk"]
@@ -505,7 +548,11 @@ def install():
     ]
     if OFFLINE:
         install_command += ["--option", "substituters", "auto?trusted=1"]
-    run(install_command)
+    offline_rewrite = rewrite_offline_inputs(target) if OFFLINE else None
+    try:
+        run(install_command)
+    finally:
+        restore_offline_inputs(offline_rewrite)
 
     shell = detect_shell(target)
     home = os.path.join(MOUNT, "home", username)

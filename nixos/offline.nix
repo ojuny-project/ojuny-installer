@@ -12,6 +12,10 @@ let
     builtins.attrValues lock.nodes
   );
 
+  dirInputPaths = lib.mapAttrs (_: node: toString (fetchLocked node.locked)) (
+    lib.filterAttrs (_: node: node ? locked && node.locked ? dir) lock.nodes
+  );
+
   fetchLocked =
     locked:
     if locked ? dir then
@@ -40,6 +44,8 @@ in
   environment.etc."ojuny/offline".text = "";
 
   environment.etc."ojuny/flake-inputs".text = lib.concatMapStrings (path: path + "\n") flakeInputs;
+
+  environment.etc."ojuny/flake-input-paths".text = builtins.toJSON dirInputPaths;
 
   isoImage.storeContents = lib.mkAfter flakeInputs;
 

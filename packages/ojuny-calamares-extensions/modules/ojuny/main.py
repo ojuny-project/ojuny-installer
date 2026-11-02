@@ -852,6 +852,48 @@ def preload_store_paths(root):
     run_command([cmd("pkexec"), cmd("nix"), "copy", "--no-check-sigs", "--to", root] + paths)
 
 
+def rewrite_offline_inputs(staging):
+    mapping_path = "/etc/ojuny/flake-input-paths"
+    lock_path = os.path.join(staging, "flake.lock")
+    if not os.path.exists(mapping_path) or not os.path.exists(lock_path):
+        return None
+    with open(mapping_path) as handle:
+        mapping = json.load(handle)
+    if not mapping:
+        return None
+    with open(lock_path) as handle:
+        original = handle.read()
+    lock = json.loads(original)
+    for name, path in mapping.items():
+        node = lock.get("nodes", {}).get(name)
+        if node is None or "locked" not in node:
+            continue
+        nar_hash = run_command(
+            [
+                cmd("nix"),
+                "--extra-experimental-features",
+                "nix-command",
+                "hash",
+                "path",
+                "--sri",
+                path,
+            ]
+        ).strip()
+        node["locked"] = {"type": "path", "path": path, "narHash": nar_hash}
+    write_file(lock_path, json.dumps(lock, indent=2) + "\n")
+    libcalamares.utils.debug(
+        "Ojuny: rewrote {} flake inputs for offline evaluation".format(len(mapping))
+    )
+    return lock_path, original
+
+
+def restore_offline_inputs(rewrite):
+    if rewrite is None:
+        return
+    lock_path, original = rewrite
+    write_file(lock_path, original)
+
+
 def install():
     global_storage = libcalamares.globalstorage
     job_configuration = libcalamares.job.configuration
@@ -1114,6 +1156,10 @@ def install():
     if os.path.exists("/etc/ojuny/offline"):
         command += ["--option", "substituters", "auto?trusted=1"]
 
+    offline_rewrite = None
+    if os.path.exists("/etc/ojuny/offline"):
+        offline_rewrite = rewrite_offline_inputs(staging)
+
     process = subprocess.Popen(
         command,
         stdout=subprocess.PIPE,
@@ -1144,7 +1190,9 @@ def install():
             min(0.98, 0.32 + progress.fraction * (0.98 - 0.32))
         )
 
-    if process.wait() != 0:
+    exit_code = process.wait()
+    restore_offline_inputs(offline_rewrite)
+    if exit_code != 0:
         raise RuntimeError("nixos-install failed:\n{}".format("\n".join(output)))
 
     libcalamares.utils.debug("Ojuny: nixos-install finished")

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ -z "${TEMPLATE:-}" ] || [ -z "${PREPARE_REPO:-}" ]; then
-  echo "check-offline-install-closure: TEMPLATE and PREPARE_REPO must be set" >&2
+if [ -z "${TEMPLATE:-}" ] || [ -z "${PREPARE_REPO:-}" ] || [ -z "${EVAL_CLOSURE:-}" ]; then
+  echo "check-offline-install-closure: TEMPLATE, PREPARE_REPO and EVAL_CLOSURE must be set" >&2
   exit 2
 fi
 
@@ -18,7 +18,7 @@ trap cleanup EXIT
   --template "$TEMPLATE" \
   --username fixture \
   --fullname "Fixture Account" \
-  --hashed-password '!' \
+  --hashed-password '$6$VHOzJbAlJ4mzcEMh$0HBRrS/wD8f8t6VqdNIpIpc54sImrnoHEMyp8PCVG/22i0nDxeGLNyWd6YyyWsCCRe33P.UTC7AL6yiNcMKHH0' \
   --shell bash \
   --hostname fixture-host \
   --state-version 26.11 \
@@ -68,16 +68,40 @@ if [ "${#flakeInputs[@]}" -eq 0 ]; then
   exit 2
 fi
 
+mapfile -t evalPaths <"$EVAL_CLOSURE/store-paths"
+mapfile -t storePaths < <(printf '%s\n' "${evalPaths[@]}" "${flakeInputs[@]}" | grep -v '^$' | sort -u)
+
 mkdir -p "$work/target/nix/store"
 database="$work/target-database"
 : >"$database"
-echo "preloading ${#flakeInputs[@]} flake inputs into the target store"
-for source in "${flakeInputs[@]}"; do
+echo "preloading ${#storePaths[@]} store paths into the target store"
+for source in "${storePaths[@]}"; do
   nix-store --dump "$source" |
     nix-store --store "$work/target" --restore "$work/target$source"
   printf '%s\n%s\n0\n\n0\n' "$source" "$(nix-hash --type sha256 --base16 "$source")" >>"$database"
 done
 nix-store --store "$work/target" --load-db <"$database"
+
+python3 - "$work/flake/flake.lock" "$FLAKE_INPUT_PATHS" <<'PY'
+import json
+import subprocess
+import sys
+
+lock_path, mapping = sys.argv[1], sys.argv[2]
+lock = json.load(open(lock_path))
+for name, path in json.loads(mapping).items():
+    node = lock["nodes"].get(name)
+    if node is None or "locked" not in node:
+        continue
+    nar_hash = subprocess.check_output(
+        ["nix", "--extra-experimental-features", "nix-command", "hash", "path", "--sri", path],
+        text=True,
+    ).strip()
+    node["locked"] = {"type": "path", "path": path, "narHash": nar_hash}
+with open(lock_path, "w") as handle:
+    json.dump(lock, handle, indent=2)
+    handle.write("\n")
+PY
 
 nix --extra-experimental-features "nix-command flakes" eval \
   --store "$work/target" \
