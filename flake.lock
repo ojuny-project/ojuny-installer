@@ -916,11 +916,11 @@
         "tinted-theming": "tinted-theming"
       },
       "locked": {
-        "lastModified": 1793528491,
-        "narHash": "sha256-KoaRFu/c8+iciKUE8W7Yvk4XCmYt87E+aSUF58qwJRk=",
+        "lastModified": 1793611798,
+        "narHash": "sha256-kxRuFZg5eix7CX91sVL+ecxFaID9RyEpkPNpB/+Xlo0=",
         "owner": "SDG-Den",
         "repo": "nix-settings-gui",
-        "rev": "88e0cdae95e697ea9b7b3d52aacd18230002a08d",
+        "rev": "16af327f431e68ec03b8324cdfe8a90fc58fb098",
         "type": "github"
       },
       "original": {
@@ -1144,11 +1144,11 @@
         "stylix": "stylix"
       },
       "locked": {
-        "lastModified": 1793558777,
-        "narHash": "sha256-lgl+FGRybuPBd63CfVOJbXYwsWmqXRtq5+wUzPi6Rpo=",
+        "lastModified": 1793611809,
+        "narHash": "sha256-xxfwKQQJ8IteuSM7UGFggMFChePgFBe+wUQ0H8UIFFY=",
         "owner": "ojuny-project",
         "repo": "ojuny-template",
-        "rev": "0348afc698ebf72a134d8a4ae75e3db4a6978b17",
+        "rev": "e82987357f2450bd6c767ee990e4884b6a63ae71",
         "type": "github"
       },
       "original": {
