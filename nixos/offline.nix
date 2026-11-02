@@ -1,4 +1,5 @@
 {
+  config,
   inputs,
   lib,
   ...
@@ -36,6 +37,8 @@ let
   flakeInputs = [ template.outPath ] ++ map (node: fetchLocked node.locked) lockedInputs;
 in
 {
+  imports = [ ./preload.nix ];
+
   nix.settings.substituters = lib.mkForce [ ];
   nix.settings.extra-substituters = lib.mkForce [ ];
   nix.settings.trusted-substituters = lib.mkForce [ ];
@@ -47,7 +50,7 @@ in
 
   environment.etc."ojuny/flake-input-paths".text = builtins.toJSON dirInputPaths;
 
-  isoImage.storeContents = lib.mkAfter flakeInputs;
+  isoImage.storeContents = lib.mkAfter (flakeInputs ++ config.ojuny.preloadPaths);
 
   isoImage.compressImage = false;
   isoImage.squashfsCompression = "zstd -Xcompression-level 19";

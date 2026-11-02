@@ -318,6 +318,71 @@ def apply_host_settings(root, runtime_flake):
         handle.write(text)
 
 
+LUKS_DEVICE_LINE = re.compile(r'boot\.initrd\.luks\.devices\."([^"]+)"\.device\s*=')
+
+
+def open_crypt_devices():
+    report = json.loads(output(["lsblk", "-J", "-o", "NAME,TYPE,UUID"]))
+    devices = {}
+
+    def walk(node, parent_uuid=None):
+        if node.get("type") == "crypt":
+            name = node.get("name")
+            uuid = parent_uuid or node.get("uuid")
+            if name and uuid:
+                devices[name] = uuid
+        for child in node.get("children") or []:
+            walk(child, node.get("uuid") or parent_uuid)
+
+    for node in report.get("blockdevices", []):
+        walk(node)
+    return devices
+
+
+def sanitize_hardware_module(root):
+    path = os.path.join(root, "modules/07-system/00-hardware.nix")
+    if not os.path.exists(path):
+        return
+    with open(path) as handle:
+        lines = handle.read().splitlines()
+
+    defined = {}
+    deduped = []
+    for line in lines:
+        match = LUKS_DEVICE_LINE.search(line)
+        if match:
+            name = match.group(1)
+            if name in defined:
+                if defined[name] != line.strip():
+                    raise RuntimeError(
+                        'conflicting boot.initrd.luks.devices."{}" definitions'.format(
+                            name
+                        )
+                    )
+                continue
+            defined[name] = line.strip()
+        deduped.append(line)
+
+    crypt = open_crypt_devices()
+    referenced = set(re.findall(r"/dev/mapper/([A-Za-z0-9_.+-]+)", "\n".join(deduped)))
+    for name in sorted((referenced & set(crypt)) - set(defined)):
+        line = 'boot.initrd.luks.devices."{}".device = "/dev/disk/by-uuid/{}";'.format(
+            name, crypt[name]
+        )
+        deduped.append(line)
+        defined[name] = line
+
+    missing = sorted((referenced & set(crypt)) - set(defined))
+    if missing:
+        raise RuntimeError(
+            "hardware module is missing boot.initrd.luks.devices entries for: {}".format(
+                ", ".join(missing)
+            )
+        )
+    with open(path, "w") as handle:
+        handle.write("\n".join(deduped) + "\n")
+
+
 def regenerate_hardware(root, firmware, disk):
     command = [
         "regenerate-hardware",
@@ -331,6 +396,8 @@ def regenerate_hardware(root, firmware, disk):
     if firmware == "bios":
         command += ["--boot-device", os.path.realpath(disk)]
     run(command)
+
+    sanitize_hardware_module(root)
 
     for name in ("configuration.nix", "hardware-configuration.nix"):
         path = os.path.join(MOUNT, "etc/nixos", name)

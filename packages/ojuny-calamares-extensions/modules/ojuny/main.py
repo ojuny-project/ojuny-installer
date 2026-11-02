@@ -41,6 +41,25 @@ def run_command(cmd, input=None):
     return result.stdout
 
 
+def run_command_output(cmd, input=None):
+    result = subprocess.run(
+        cmd,
+        input=input,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            "command failed ({code}): {cmd}\n{output}".format(
+                code=result.returncode,
+                cmd=" ".join(cmd),
+                output=(result.stdout or "") + (result.stderr or ""),
+            )
+        )
+    return result.stdout
+
+
 def cmd(name):
     path = shutil.which(name)
     if path is None:
@@ -662,12 +681,72 @@ def generate_facter(staging):
     write_file(os.path.join(staging, "modules/07-system/facter.json"), report)
 
 
+LUKS_DEVICE_LINE = re.compile(r'boot\.initrd\.luks\.devices\."([^"]+)"\.device\s*=')
+
+
+def open_crypt_devices():
+    report = json.loads(run_command_output([cmd("lsblk"), "-J", "-o", "NAME,TYPE,UUID"]))
+    devices = {}
+
+    def walk(node, parent_uuid=None):
+        if node.get("type") == "crypt":
+            name = node.get("name")
+            uuid = parent_uuid or node.get("uuid")
+            if name and uuid:
+                devices[name] = uuid
+        for child in node.get("children") or []:
+            walk(child, node.get("uuid") or parent_uuid)
+
+    for node in report.get("blockdevices", []):
+        walk(node)
+    return devices
+
+
 def sanitize_hardware_module(staging):
     path = os.path.join(staging, "modules/07-system/00-hardware.nix")
-    if os.path.exists(path):
-        run_command(
-            [cmd("pkexec"), cmd("sed"), "-i", "/hardware\\.facter\\.reportPath/d", path]
+    if not os.path.exists(path):
+        return
+    with open(path) as handle:
+        lines = [
+            line
+            for line in handle.read().splitlines()
+            if "hardware.facter.reportPath" not in line
+        ]
+
+    defined = {}
+    deduped = []
+    for line in lines:
+        match = LUKS_DEVICE_LINE.search(line)
+        if match:
+            name = match.group(1)
+            if name in defined:
+                if defined[name] != line.strip():
+                    raise RuntimeError(
+                        'conflicting boot.initrd.luks.devices."{}" definitions'.format(
+                            name
+                        )
+                    )
+                continue
+            defined[name] = line.strip()
+        deduped.append(line)
+
+    crypt = open_crypt_devices()
+    referenced = set(re.findall(r"/dev/mapper/([A-Za-z0-9_.+-]+)", "\n".join(deduped)))
+    for name in sorted((referenced & set(crypt)) - set(defined)):
+        line = 'boot.initrd.luks.devices."{}".device = "/dev/disk/by-uuid/{}";'.format(
+            name, crypt[name]
         )
+        deduped.append(line)
+        defined[name] = line
+
+    missing = sorted((referenced & set(crypt)) - set(defined))
+    if missing:
+        raise RuntimeError(
+            "hardware module is missing boot.initrd.luks.devices entries for: {}".format(
+                ", ".join(missing)
+            )
+        )
+    write_file(path, "\n".join(deduped) + "\n")
 
 
 def hardware_script_args(clone, root, firmware, device, extra_file):
@@ -868,7 +947,7 @@ def rewrite_offline_inputs(staging):
         node = lock.get("nodes", {}).get(name)
         if node is None or "locked" not in node:
             continue
-        nar_hash = run_command(
+        nar_hash = run_command_output(
             [
                 cmd("nix"),
                 "--extra-experimental-features",

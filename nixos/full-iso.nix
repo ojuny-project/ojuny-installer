@@ -1,4 +1,5 @@
 {
+  config,
   lib,
   pkgs,
   inputs,
@@ -174,14 +175,17 @@ in
 
   ojuny.plymouth.enable = lib.mkForce false;
 
-  environment.etc."ojuny/target-toplevels".text = lib.concatMapStrings (path: path + "\n") [
-    target.config.system.build.toplevel
-    targetLatest.config.system.build.toplevel
-    target.pkgs.stdenv
-    target.pkgs.microcode-intel
-    target.pkgs.microcode-amd
-    target.pkgs.base16-schemes
-  ];
+  environment.etc."ojuny/target-toplevels".text = lib.concatMapStrings (path: path + "\n") (
+    [
+      target.config.system.build.toplevel
+      targetLatest.config.system.build.toplevel
+      target.pkgs.stdenv
+      target.pkgs.microcode-intel
+      target.pkgs.microcode-amd
+      target.pkgs.base16-schemes
+    ]
+    ++ config.ojuny.preloadPaths
+  );
 
   isoImage.storeContents = lib.mkAfter [
     target.config.system.build.toplevel
