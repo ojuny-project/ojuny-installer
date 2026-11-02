@@ -69,11 +69,15 @@ if [ "${#flakeInputs[@]}" -eq 0 ]; then
 fi
 
 mkdir -p "$work/target/nix/store"
+database="$work/target-database"
+: >"$database"
 echo "preloading ${#flakeInputs[@]} flake inputs into the target store"
 for source in "${flakeInputs[@]}"; do
   nix-store --dump "$source" |
     nix-store --store "$work/target" --restore "$work/target$source"
+  printf '%s\n%s\n0\n\n0\n' "$source" "$(nix-hash --type sha256 --base16 "$source")" >>"$database"
 done
+nix-store --store "$work/target" --load-db <"$database"
 
 nix --extra-experimental-features "nix-command flakes" eval \
   --store "$work/target" \
