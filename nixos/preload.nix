@@ -5,6 +5,22 @@
 }:
 
 let
+  generated = ./preload-paths.txt;
+
+  generatedPaths =
+    if builtins.pathExists generated then
+      builtins.filter (path: path != "") (lib.splitString "\n" (builtins.readFile generated))
+    else
+      [ ];
+
+  withContext =
+    path:
+    builtins.appendContext path {
+      "${path}" = {
+        path = true;
+      };
+    };
+
   requestedOutputs = [
     "out"
     "bin"
@@ -62,6 +78,7 @@ let
     ghc
     hscolour
     haskellPackages.hscolour
+    haskellPackages.hostname
     hostname
     removeReferencesTo
   ];
@@ -73,5 +90,9 @@ in
     description = "Store paths preloaded into the offline ISO for install-time builds.";
   };
 
-  config.ojuny.preloadPaths = lib.unique (lib.concatMap outputsOf packages);
+  config.ojuny.preloadPaths = lib.unique (
+    (if generatedPaths != [ ] then map withContext generatedPaths else [ ])
+    ++ lib.concatMap outputsOf packages
+    ++ [ target.pkgs.haskellPackages.hostname.src ]
+  );
 }

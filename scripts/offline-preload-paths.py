@@ -8,6 +8,7 @@ outputs of their inputs that are identical in both configurations must be
 present in the ISO, because the generated derivations are built on the target.
 """
 
+import json
 import sys
 
 
@@ -103,23 +104,50 @@ def closure(root):
 
 
 def main():
-    if len(sys.argv) != 3:
-        raise SystemExit("usage: offline-preload-paths.py TOP_A TOP_B")
-    first = closure(sys.argv[1])
-    second = closure(sys.argv[2])
-    changed = first ^ second
+    args = sys.argv[1:]
+    baseline = set()
+    build_outputs = set()
+    if args[:1] == ["--baseline"]:
+        with open(args[1]) as handle:
+            baseline = set(json.load(handle))
+        args = args[2:]
+    if args[:1] == ["--build"]:
+        with open(args[1]) as handle:
+            build_outputs = set(json.load(handle))
+        args = args[2:]
+    if len(args) < 2:
+        raise SystemExit(
+            "usage: offline-preload-paths.py [--baseline FILE] [--build FILE] TOP [TOP ...]"
+        )
+
+    closures = [closure(path) for path in args]
+    changed = set.union(*closures) - set.intersection(*closures)
+
     frontier = set()
-    for drv in changed:
+    built = set()
+    queue = []
+    for top in args:
+        if top not in built:
+            built.add(top)
+            queue.append(top)
+
+    while queue:
+        drv = queue.pop()
         _, inputs, srcs = parse_derivation(drv)
         frontier.update(srcs)
         for dep, names in inputs:
-            if dep in changed:
-                continue
             outputs, _, _ = parse_derivation(dep)
             for name in names:
                 path = outputs.get(name)
-                if path:
+                if not path:
+                    continue
+                if dep in changed or path in build_outputs:
+                    if dep not in built:
+                        built.add(dep)
+                        queue.append(dep)
+                elif path not in baseline:
                     frontier.add(path)
+
     for path in sorted(frontier):
         print(path)
 
