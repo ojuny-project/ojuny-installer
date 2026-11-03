@@ -133,8 +133,7 @@ def main():
 
     while queue:
         drv = queue.pop()
-        _, inputs, srcs = parse_derivation(drv)
-        frontier.update(srcs)
+        _, inputs, _ = parse_derivation(drv)
         for dep, names in inputs:
             outputs, _, _ = parse_derivation(dep)
             for name in names:

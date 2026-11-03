@@ -11,6 +11,7 @@
     inputs.ojuny-template.modules.nixos.system-plymouth
     inputs.ojuny-template.modules.nixos.system-power
     inputs.ojuny-template.modules.nixos.system-lock
+    inputs.ojuny-template.modules.nixos.system-accessibility
     inputs.ojuny-template.modules.nixos.system-nixsettings
     inputs.ojuny-template.modules.nixos.system-updates
     inputs.ojuny-template.modules.nixos.system-ojuny-cli

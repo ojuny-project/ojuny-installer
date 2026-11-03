@@ -4,6 +4,13 @@ set -euo pipefail
 repo="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repo"
 
+cores="${PRELOAD_CORES:-}"
+if [ -n "$cores" ] && command -v taskset >/dev/null 2>&1 && [ -z "${PRELOAD_TASKSET:-}" ]; then
+  export PRELOAD_TASKSET=1
+  exec nice -n 10 taskset -c "0-$((cores - 1))" "$0" "$@"
+fi
+parallel="${cores:-8}"
+
 system="x86_64-linux"
 work="$(mktemp -d)"
 previous="$work/previous-paths.txt"
@@ -201,7 +208,7 @@ for round in 1 2 3 4 5 6 7 8 9 10; do
     break
   fi
   printf '%s\n' "${paths[@]}" |
-    xargs -P 8 -I{} sh -c 'nix path-info --store https://cache.nixos.org "$1" >/dev/null 2>&1 && printf "%s\n" "$1"' _ {} |
+    xargs -P "$parallel" -I{} sh -c 'nix path-info --store https://cache.nixos.org "$1" >/dev/null 2>&1 && printf "%s\n" "$1" || true' _ {} |
     sort -u >"$work/cached.txt"
   comm -23 <(printf '%s\n' "${paths[@]}" | sort -u) "$work/cached.txt" >"$work/uncached.txt"
   if [ ! -s "$work/uncached.txt" ]; then
