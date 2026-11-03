@@ -59,6 +59,18 @@
         modules = [ ./nixos/unattended.nix ];
       };
 
+      discoveryUnattended = lib.nixosSystem {
+        inherit system;
+        specialArgs = { inherit inputs settings; };
+        modules = [ ./nixos/discovery-unattended.nix ];
+      };
+
+      persistent = lib.nixosSystem {
+        inherit system;
+        specialArgs = { inherit inputs; };
+        modules = [ ./nixos/persistent.nix ];
+      };
+
       fullTarget = lib.nixosSystem {
         inherit system;
         specialArgs = { inherit inputs; };
@@ -131,8 +143,48 @@
             ojuny-iso = iso.config.system.build.isoImage;
             ojuny-iso-discovery = discoveryIso.config.system.build.isoImage;
             unattended-iso = unattended.config.system.build.isoImage;
+            unattended-iso-discovery = discoveryUnattended.config.system.build.isoImage;
             ojuny-iso-offline = fullIso.config.system.build.isoImage;
             unattended-iso-offline = fullUnattended.config.system.build.isoImage;
+            ojuny-image-persistent = persistent.config.system.build.diskoImagesScript;
+          };
+
+          apps.make-unattended-iso = {
+            type = "app";
+            program = "${
+              pkgs.writeShellApplication {
+                name = "make-unattended-iso";
+                runtimeInputs = [
+                  pkgs.coreutils
+                  pkgs.git
+                  pkgs.mkpasswd
+                  pkgs.nix
+                  pkgs.python3
+                ];
+                text = ''
+                  export OJUNY_INSTALLER_SOURCE="${self}"
+                  ${builtins.readFile ./scripts/make-unattended-iso.sh}
+                '';
+              }
+            }/bin/make-unattended-iso";
+          };
+
+          apps.make-persistent-image = {
+            type = "app";
+            program = "${
+              pkgs.writeShellApplication {
+                name = "make-persistent-image";
+                runtimeInputs = [
+                  pkgs.coreutils
+                  pkgs.nix
+                  pkgs.qemu
+                ];
+                text = ''
+                  export OJUNY_DISKO_IMAGE_SCRIPT="${persistent.config.system.build.diskoImagesScript}"
+                  ${builtins.readFile ./scripts/make-persistent-image.sh}
+                '';
+              }
+            }/bin/make-persistent-image";
           };
 
           devShells.default = pkgs.mkShell {
@@ -285,7 +337,9 @@
       flake.nixosConfigurations.ojuny-iso = iso;
       flake.nixosConfigurations.ojuny-iso-discovery = discoveryIso;
       flake.nixosConfigurations.ojuny-unattended = unattended;
+      flake.nixosConfigurations.ojuny-unattended-discovery = discoveryUnattended;
       flake.nixosConfigurations.ojuny-iso-offline = fullIso;
+      flake.nixosConfigurations.ojuny-image-persistent = persistent;
       flake.nixosConfigurations.ojuny-unattended-offline = fullUnattended;
     };
 }

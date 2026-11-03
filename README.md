@@ -38,6 +38,23 @@ nix build .#ojuny-iso-offline
 The offline image is written to `result/iso/*.iso` and contains the full system
 runtime closure.
 
+Build the discovery and offline unattended images:
+
+```sh
+nix build .#unattended-iso-discovery
+nix build .#unattended-iso-offline
+```
+
+Build the base persistent image:
+
+```sh
+nix run .#make-persistent-image
+```
+
+The persistent image is a raw `.img` with a tmpfs root and a persistent
+`/home`. It can be written with Etcher or Rufus and booted from Ventoy. See
+[docs/persistent-image.md](docs/persistent-image.md).
+
 For development:
 
 ```sh
@@ -56,19 +73,39 @@ nix build .#ojuny-iso \
 ## Unattended ISO
 
 ```sh
-nix develop
-scripts/make-unattended-iso.sh \
-  --flake "$HOME/repos/my-template" \
+nix run github:ojuny-project/ojuny-installer#make-unattended-iso
+```
+
+The script shows a variant menu and prompts for the template, firmware, account,
+password and SSH keys. Pressing Enter through the prompts uses the base template
+and a generic `user` on host `ojuny`. The template is passed through
+`--override-input`, so a fork is used directly without cloning. The script
+hashes the password before building, writes the settings to a temporary flake
+input, and copies the ISO to `./result-unattended/`. Use `--dry-run` to inspect
+the settings and build command without building. `--offline` and `--discovery`
+skip the variant menu.
+
+The installed flake receives its disko layout in
+`modules/07-system/00-hardware.nix`, so the disk layout survives future
+redeployments. That file and the user module are the only generated files.
+
+See `docs/unattended-install.md` for modes, the install flow and limitations.
+
+## Remote deployment
+
+`ojuny-template` provides two flake apps:
+
+```sh
+nix run github:ojuny-project/ojuny-template#remote-setup -- --target root@host
+nix run github:ojuny-project/ojuny-template#remote-install -- \
+  --target root@host \
   --disk /dev/disk/by-id/...
 ```
 
-The script prompts for firmware, account, password and SSH keys. It hashes the
-password before building, writes the settings to a temporary flake input, and
-copies the ISO to `result-unattended/`. Use `--dry-run` to inspect the settings
-and build command without building. Add `--offline` to build the full-system
-offline image instead.
-
-See `docs/unattended-install.md` for modes, the install flow and limitations.
+`remote-setup` uses deploy-rs on an existing NixOS or Ojuny target.
+`remote-install` prepares a disko repository and uses nixos-anywhere on a
+target that does not run NixOS yet. See
+[docs/remote-deployment.md](docs/remote-deployment.md).
 
 ## Test in QEMU
 
@@ -149,9 +186,19 @@ not run yet.
 
 - `flake.nix`: inputs, dev shell, packages and the ISO outputs.
 - `nixos/iso.nix`: live Calamares ISO configuration.
-- `nixos/unattended.nix`: unattended installer ISO configuration.
+- `nixos/unattended-common.nix`: shared unattended disk layout and install
+  service.
+- `nixos/unattended.nix`: online unattended installer ISO configuration.
+- `nixos/discovery-unattended.nix`: discovery unattended installer ISO
+  configuration.
 - `nixos/full-iso.nix`: full-system offline Calamares ISO configuration.
-- `nixos/full-unattended.nix`: full-system offline unattended ISO configuration.
+- `nixos/full-unattended.nix`: full-system offline unattended ISO
+  configuration.
+- `nixos/persistent.nix`: raw persistent image with a tmpfs root and a
+  persistent home.
+- `scripts/make-persistent-image.sh`: persistent image app wrapper.
+- `docs/persistent-image.md`: persistent image layout and write steps.
+- `docs/remote-deployment.md`: deploy-rs and nixos-anywhere workflows.
 - `nixos/full-system.nix`: full template module set without machine hardware.
 - `nixos/full-hardware.nix`: generic hardware for the prebuilt target closure.
 - `nixos/target-bootloader.nix`: systemd-boot for the prebuilt target closure.

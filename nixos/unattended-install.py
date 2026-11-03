@@ -16,6 +16,7 @@ DISKO_CONFIG = "/etc/ojuny/disk-config.nix"
 MOUNT = "/mnt"
 MIN_DISK_BYTES = 8 * 1024**3
 OFFLINE = os.path.exists("/etc/ojuny/offline")
+DISCOVERY = os.path.exists("/etc/ojuny/discovery")
 
 
 def log(message):
@@ -97,6 +98,11 @@ def confirm(disk, seconds):
 
 
 def wait_for_network():
+    url = (
+        "http://127.0.0.1:5055/nix-cache-info"
+        if DISCOVERY
+        else "https://cache.nixos.org/nix-cache-info"
+    )
     for _ in range(60):
         result = subprocess.run(
             [
@@ -104,7 +110,7 @@ def wait_for_network():
                 "-sSf",
                 "--max-time",
                 "5",
-                "https://cache.nixos.org/nix-cache-info",
+                url,
             ],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -112,6 +118,9 @@ def wait_for_network():
         if result.returncode == 0:
             return
         time.sleep(2)
+    if DISCOVERY:
+        log("discovery cache is not answering yet, continuing with the local daemon")
+        return
     raise RuntimeError("network is not available")
 
 
@@ -405,6 +414,125 @@ def regenerate_hardware(root, firmware, disk):
             os.unlink(path)
 
 
+def write_hardware(root, settings):
+    encryption = settings.get("encryption") or {}
+    root_content = (
+        """{
+          type = "luks";
+          name = "cryptroot";
+          settings.allowDiscards = true;
+          passwordFile = null;
+          content = {
+            type = "filesystem";
+            format = "ext4";
+            mountpoint = "/";
+          };
+        }"""
+        if encryption.get("enable")
+        else """{
+          type = "filesystem";
+          format = "ext4";
+          mountpoint = "/";
+        }"""
+    )
+
+    swap = ""
+    if settings.get("swapSize") not in (None, "0"):
+        swap = """
+          swap = {
+            size = %s;
+            priority = 3;
+            content = {
+              type = "swap";
+            };
+          };""" % nix_string(settings["swapSize"])
+
+    disk = settings["disk"]
+    firmware = settings["firmware"]
+    path = os.path.join(root, "modules/07-system/00-hardware.nix")
+    with open(path, "w") as handle:
+        handle.write(
+            """{{ self, inputs, ... }}: {{
+
+  flake.modules.nixos.system-hardware =
+    {{ lib, ... }}:
+    {{
+      imports = [ inputs.disko.nixosModules.disko ];
+
+      boot.initrd.availableKernelModules = [
+        "ahci"
+        "dm_mod"
+        "hid_generic"
+        "nvme"
+        "sd_mod"
+        "sr_mod"
+        "usb_storage"
+        "usbhid"
+        "xhci_pci"
+      ];
+
+      disko.devices.disk.main = {{
+        device = {disk};
+        type = "disk";
+        content = {{
+          type = "gpt";
+          partitions = {{
+            boot = {{
+              size = "1M";
+              type = "EF02";
+              priority = 1;
+            }};
+            ESP = {{
+              size = "1G";
+              type = "EF00";
+              priority = 2;
+              content = {{
+                type = "filesystem";
+                format = "vfat";
+                mountpoint = "/boot";
+                mountOptions = [ "umask=0077" ];
+              }};
+            }};
+            root = {{
+              size = "100%";
+              priority = 4;
+              content = {root_content};
+            }};{swap}
+          }};
+        }};
+      }};
+
+      boot.loader.systemd-boot.enable = lib.mkForce {efi};
+      boot.loader.efi.canTouchEfiVariables = lib.mkForce {efi};
+      boot.loader.grub.enable = lib.mkForce {bios};
+      boot.loader.grub.devices = lib.mkIf {bios} [ {disk} ];
+
+      ojuny.network.deploy-rs.enable = lib.mkDefault {remote};
+
+      nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
+    }};
+
+  flake.modules.nixos.system-bootloader =
+    {{ lib, ... }}:
+    {{
+      boot.loader.systemd-boot.enable = lib.mkDefault false;
+      boot.loader.efi.canTouchEfiVariables = lib.mkDefault false;
+      boot.loader.grub.enable = lib.mkDefault false;
+      boot.loader.grub.devices = lib.mkDefault [ ];
+    }};
+
+}}
+""".format(
+                disk=nix_string(disk),
+                root_content=root_content,
+                swap=swap,
+                efi="true" if firmware == "efi" else "false",
+                bios="true" if firmware == "bios" else "false",
+                remote="true",
+            )
+        )
+
+
 def git_init(root):
     run(["git", "-C", root, "init", "-q"])
     run(["git", "-C", root, "add", "-A"])
@@ -596,6 +724,7 @@ def install():
 
     apply_settings(target, settings, username, host, runtime_flake)
     regenerate_hardware(target, firmware, disk)
+    write_hardware(target, settings)
     git_init(target)
 
     if OFFLINE:

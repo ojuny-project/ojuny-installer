@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_ROOT="${OJUNY_INSTALLER_SOURCE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 
-flake="${OJUNY_FLAKE:-$HOME/repos/nix-flake}"
+flake="${OJUNY_FLAKE:-}"
 disk=""
 firmware="efi"
-mode="prepared"
-host=""
-username=""
-full_name=""
+mode="bundled"
+host="ojuny"
+username="user"
+full_name="Primary account"
 password=""
-shell=""
-timezone=""
-locale=""
-keymap=""
+shell="zsh"
+timezone="UTC"
+locale="en_US.UTF-8"
+keymap="us"
 swap_size="0"
 encryption_enable=0
 encryption_passphrase=""
@@ -22,21 +22,27 @@ confirm_seconds="10"
 final_action="reboot"
 clone_relative="repos/nix-flake"
 state_version="25.05"
-output_dir="$REPO_ROOT/result-unattended"
+output_dir="$PWD/result-unattended"
 dry_run=0
 offline=0
+discovery=0
+variant_set=0
+interactive=0
+password_prompted=0
+ssh_prompted=0
 ssh_keys=()
 
 usage() {
   cat <<'EOF'
 Usage: make-unattended-iso.sh [options]
 
-Build an unattended Ojuny ISO from a template fork. The ISO installs the flake
-and leaves the modified copy at /home/<user>/repos/nix-flake. Use --offline for
-the full-system offline ISO.
+Build an unattended Ojuny ISO from the base template or your own fork. The
+template is passed to --override-input, so no clone is needed. The ISO installs
+the flake and leaves the modified copy at /home/<user>/repos/nix-flake.
 
 Options:
-  --flake PATH          Path to the ojuny-template fork (default: ~/repos/nix-flake)
+  --template URL|PATH    Template fork used through --override-input
+  --flake URL|PATH       Alias for --template
   --disk DEVICE         Target disk, preferably /dev/disk/by-id/...
   --firmware efi|bios   Target firmware (default: efi)
   --mode prepared|bundled
@@ -57,16 +63,23 @@ Options:
   --final-action ACTION reboot or poweroff (default: reboot)
   --clone-relative PATH Path under the home directory (default: repos/nix-flake)
   --state-version VER   stateVersion for bundled mode (default: 25.05)
-  --output DIR          Copy the ISO here (default: result-unattended)
+  --output DIR          Copy the ISO here (default: ./result-unattended)
+  --interactive         Show the interactive menu even when flags are given
+  --online              Build the online ISO
   --offline             Build the full-system offline ISO
+  --discovery           Build the local cache discovery ISO
   --dry-run             Print the settings and build command
   -h, --help            Show this help
 EOF
 }
 
+if [ "$#" -eq 0 ] && [ -t 0 ]; then
+  interactive=1
+fi
+
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --flake)
+    --template | --flake)
       flake="${2:-}"
       shift 2
       ;;
@@ -147,8 +160,22 @@ while [ "$#" -gt 0 ]; do
       output_dir="${2:-}"
       shift 2
       ;;
+    --interactive)
+      interactive=1
+      shift
+      ;;
+    --online)
+      variant_set=1
+      shift
+      ;;
     --offline)
       offline=1
+      variant_set=1
+      shift
+      ;;
+    --discovery)
+      discovery=1
+      variant_set=1
       shift
       ;;
     --dry-run)
@@ -167,12 +194,157 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
-if [ ! -f "$flake/flake.nix" ]; then
-  echo "make-unattended-iso: no flake.nix at $flake" >&2
-  exit 1
+if [ "$interactive" -eq 1 ]; then
+  printf '\033[2J\033[H'
+  cat <<'EOF'
+============================================================
+  Ojuny unattended ISO
+============================================================
+
+Build an unattended installer from the base template or your own fork.
+Press Enter to accept a default.
+
+EOF
+
+  PS3="ISO variant: "
+  select variant in "online" "offline" "discovery"; do
+    case "$variant" in
+      online) break ;;
+      offline)
+        offline=1
+        break
+        ;;
+      discovery)
+        discovery=1
+        break
+        ;;
+    esac
+  done
+  variant_set=1
+
+  read -r -p "Template URL or path [github:ojuny-project/ojuny-template]: " answer
+  flake="${answer:-github:ojuny-project/ojuny-template}"
+
+  read -r -p "Target disk [/dev/disk/by-id/CHANGE-ME]: " answer
+  disk="${answer:-/dev/disk/by-id/CHANGE-ME}"
+
+  PS3="Firmware: "
+  select choice in "efi" "bios"; do
+    case "$choice" in
+      efi | bios)
+        firmware="$choice"
+        break
+        ;;
+    esac
+  done
+
+  PS3="Mode: "
+  select choice in "bundled (generic account)" "prepared (fork as-is)"; do
+    case "$choice" in
+      bundled*) mode="bundled"; break ;;
+      prepared*) mode="prepared"; break ;;
+    esac
+  done
+
+  if [ "$mode" = "bundled" ]; then
+    read -r -p "Username [user]: " answer
+    username="${answer:-user}"
+    read -r -p "Hostname [ojuny]: " answer
+    host="${answer:-ojuny}"
+    read -r -p "Account description [Primary account]: " answer
+    full_name="${answer:-Primary account}"
+    read -r -p "Login shell [zsh]: " answer
+    shell="${answer:-zsh}"
+    read -r -p "Time zone [UTC]: " answer
+    timezone="${answer:-UTC}"
+    read -r -p "Locale [en_US.UTF-8]: " answer
+    locale="${answer:-en_US.UTF-8}"
+    read -r -p "Console keymap [us]: " answer
+    keymap="${answer:-us}"
+  fi
+
+  read -r -p "Swap size, 0 to disable [0]: " answer
+  swap_size="${answer:-0}"
+
+  read -r -p "Encrypt the root with LUKS2? [y/N]: " answer
+  case "$answer" in
+    [yY]*) encryption_enable=1 ;;
+    *) encryption_enable=0 ;;
+  esac
+  if [ "$encryption_enable" -eq 1 ]; then
+    read -r -s -p "LUKS passphrase: " encryption_passphrase
+    echo
+  fi
+
+  read -r -s -p "Password (empty locks the account): " password
+  echo
+  password_prompted=1
+
+  while true; do
+    read -r -p "SSH public key (empty to finish): " key
+    [ -z "$key" ] && break
+    ssh_keys+=("$key")
+  done
+  ssh_prompted=1
+
+  PS3="After install: "
+  select choice in "reboot" "poweroff"; do
+    case "$choice" in
+      reboot | poweroff)
+        final_action="$choice"
+        break
+        ;;
+    esac
+  done
+
+  read -r -p "Output directory [./result-unattended]: " answer
+  output_dir="${answer:-$PWD/result-unattended}"
 fi
 
-flake="$(cd "$flake" && pwd)"
+if [ "$offline" -eq 1 ] && [ "$discovery" -eq 1 ]; then
+  echo "make-unattended-iso: --offline and --discovery are mutually exclusive" >&2
+  exit 2
+fi
+
+if [ "$variant_set" -eq 0 ] && [ -t 0 ]; then
+  PS3="Unattended ISO variant: "
+  select variant in "online" "offline" "discovery"; do
+    case "$variant" in
+      online) break ;;
+      offline)
+        offline=1
+        break
+        ;;
+      discovery)
+        discovery=1
+        break
+        ;;
+    esac
+  done
+fi
+
+if [ -z "$flake" ]; then
+  if [ -t 0 ]; then
+    read -r -p "Template URL or path [github:ojuny-project/ojuny-template]: " flake
+  fi
+  flake="${flake:-github:ojuny-project/ojuny-template}"
+fi
+
+work_dir="$(mktemp -d)"
+trap 'rm -rf "$work_dir"' EXIT
+
+flake_ref="$flake"
+case "$flake" in
+  http://* | https://* | git+* | ssh://* | git@* | github:* | gitlab:* | path:*)
+    ;;
+  *)
+    if [ ! -f "$flake/flake.nix" ] || [ ! -d "$flake/modules/07-system" ]; then
+      echo "make-unattended-iso: $flake is not an ojuny-template repository" >&2
+      exit 1
+    fi
+    flake_ref="path:$(cd "$flake" && pwd)"
+    ;;
+esac
 
 case "$mode" in
   prepared | bundled) ;;
@@ -255,8 +427,11 @@ if [ "$mode" != "prepared" ]; then
   fi
 fi
 
-read -r -s -p "Password (empty keeps the flake value or locks the account): " password
-echo
+if [ "$password_prompted" -eq 0 ]; then
+  read -r -s -p "Password (empty keeps the flake value or locks the account): " password
+  echo
+  password_prompted=1
+fi
 
 hashed_password=""
 if [ -n "$password" ]; then
@@ -267,7 +442,7 @@ if [ -n "$password" ]; then
   hashed_password="$(mkpasswd -m yescrypt -- "$password" 2>/dev/null || mkpasswd -m sha-512 -- "$password")"
 fi
 
-if [ "${#ssh_keys[@]}" -eq 0 ]; then
+if [ "${#ssh_keys[@]}" -eq 0 ] && [ "$ssh_prompted" -eq 0 ]; then
   while true; do
     read -r -p "SSH public key (empty to finish): " key
     [ -z "$key" ] && break
@@ -275,8 +450,8 @@ if [ "${#ssh_keys[@]}" -eq 0 ]; then
   done
 fi
 
-tmp="$(mktemp -d)"
-trap 'rm -rf "$tmp"' EXIT
+tmp="$work_dir/settings"
+mkdir -p "$tmp"
 
 export OJUNY_DISK="$disk"
 export OJUNY_FIRMWARE="$firmware"
@@ -353,7 +528,9 @@ cat >"$tmp/flake.nix" <<'EOF'
 }
 EOF
 
-if [ "$offline" -eq 1 ]; then
+if [ "$discovery" -eq 1 ]; then
+  iso_output="unattended-iso-discovery"
+elif [ "$offline" -eq 1 ]; then
   iso_output="unattended-iso-offline"
 else
   iso_output="unattended-iso"
@@ -361,7 +538,7 @@ fi
 
 build_args=(
   "path:$REPO_ROOT#$iso_output"
-  --override-input ojuny-template "path:$flake"
+  --override-input ojuny-template "$flake_ref"
   --override-input settings "path:$tmp"
   --no-write-lock-file
   --no-link

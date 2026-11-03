@@ -1,16 +1,16 @@
 {
-  mode = "prepared";
+  mode = "bundled";
   disk = "/dev/disk/by-id/CHANGE-ME";
   firmware = "efi";
-  host = null;
-  username = null;
-  fullName = null;
+  host = "ojuny";
+  username = "user";
+  fullName = "Primary account";
   hashedPassword = null;
   sshKeys = [ ];
-  shell = null;
-  timezone = null;
-  locale = null;
-  keymap = null;
+  shell = "zsh";
+  timezone = "UTC";
+  locale = "en_US.UTF-8";
+  keymap = "us";
   swapSize = "0";
   encryption = {
     enable = false;
