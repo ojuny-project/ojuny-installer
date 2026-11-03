@@ -17,10 +17,10 @@ strings:
   versionedName: Ojuny
   shortVersionedName: Ojuny
   bootloaderEntryName: Ojuny
-  productUrl: https://github.com/SDG-Den/ojuny-template
-  supportUrl: https://github.com/SDG-Den/ojuny-template/issues
-  knownIssuesUrl: https://github.com/SDG-Den/ojuny-installer/issues
-  releaseNotesUrl: https://github.com/SDG-Den/ojuny-installer/releases
+  productUrl: https://github.com/ojuny-project/ojuny-template
+  supportUrl: https://github.com/ojuny-project/ojuny-template/issues
+  knownIssuesUrl: https://github.com/ojuny-project/ojuny-installer/issues
+  releaseNotesUrl: https://github.com/ojuny-project/ojuny-installer/releases
   donateUrl: ""
 
 images:

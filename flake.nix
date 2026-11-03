@@ -19,9 +19,9 @@
     };
 
     # Local working copy of the cache daemon for the discovery ISO variant.
-    # Switch to github:SDG-Den/nix-cache-discovery before publishing.
+    # nix-cache-discovery is consumed from ojuny-project.
     nix-cache-discovery = {
-      url = "github:SDG-Den/nix-cache-discovery";
+      url = "github:ojuny-project/nix-cache-discovery";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 

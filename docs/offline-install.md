@@ -3,7 +3,9 @@
 The offline ISOs are separate full-system targets. The live environment contains
 the full Ojuny system instead of the cut-down installer system, so the target
 closure and the live closure overlap heavily. The images also carry the build
-inputs needed by `nixos-install`.
+inputs needed by `nixos-install`. See the README's
+[Requirements](../README.md#requirements) for the build and install network
+boundaries.
 
 ## Build
 
@@ -18,8 +20,7 @@ The image is written to `result/iso/*.iso`.
 Unattended offline ISO:
 
 ```sh
-nix develop
-scripts/make-unattended-iso.sh --offline \
+nix run .#make-unattended-iso -- --offline \
   --flake "$HOME/repos/my-template" \
   --disk /dev/disk/by-id/...
 ```

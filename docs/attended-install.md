@@ -98,7 +98,7 @@ here.
 | --- | --- | --- |
 | main ISO - prepared template | yes (theoretically) | no |
 | discovery ISO - prepared template | yes (theoretically) | no |
-| offline ISO - prepared template (not truly offline) | yes (theoretically) | no |
+| offline ISO - prepared template (default system installs without network; see [README](../README.md#requirements)) | yes (theoretically) | no |
 | main ISO - git origin (HTTPS token) | yes (theoretically) | no |
 | main ISO - git origin (SSH) | yes (theoretically) | no |
 | main ISO - no origin | yes | no |

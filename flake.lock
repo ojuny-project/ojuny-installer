@@ -954,15 +954,15 @@
         ]
       },
       "locked": {
-        "lastModified": 1793399454,
-        "narHash": "sha256-UaqSvma+cY0YpHVWvN1nBgL7gTrkLzyJt2PpqBgcNmQ=",
-        "owner": "SDG-Den",
+        "lastModified": 1793740989,
+        "narHash": "sha256-xdigxdrrpfp5oNWdv/F9tZd2Aa77qeYeH7+fCi+REec=",
+        "owner": "ojuny-project",
         "repo": "nix-cache-discovery",
-        "rev": "038c051ab5f51a61583a6f10209f81afb2f59c70",
+        "rev": "4810f2f3fc668c6158db11b02b5a1fa13a7e4cb5",
         "type": "github"
       },
       "original": {
-        "owner": "SDG-Den",
+        "owner": "ojuny-project",
         "repo": "nix-cache-discovery",
         "type": "github"
       }
@@ -975,15 +975,15 @@
         ]
       },
       "locked": {
-        "lastModified": 1793399454,
-        "narHash": "sha256-UaqSvma+cY0YpHVWvN1nBgL7gTrkLzyJt2PpqBgcNmQ=",
-        "owner": "SDG-Den",
+        "lastModified": 1793740989,
+        "narHash": "sha256-xdigxdrrpfp5oNWdv/F9tZd2Aa77qeYeH7+fCi+REec=",
+        "owner": "ojuny-project",
         "repo": "nix-cache-discovery",
-        "rev": "038c051ab5f51a61583a6f10209f81afb2f59c70",
+        "rev": "4810f2f3fc668c6158db11b02b5a1fa13a7e4cb5",
         "type": "github"
       },
       "original": {
-        "owner": "SDG-Den",
+        "owner": "ojuny-project",
         "repo": "nix-cache-discovery",
         "type": "github"
       }
@@ -997,15 +997,15 @@
         ]
       },
       "locked": {
-        "lastModified": 1793385024,
-        "narHash": "sha256-kCA9kV/zLAHHqtifx31eJyLGIRviykHxhmQCbACMayA=",
-        "owner": "SDG-Den",
+        "lastModified": 1793740983,
+        "narHash": "sha256-40SR1DSkuyadUr0NM3QVMkxg0ASII8FhpsE05Yf/bWA=",
+        "owner": "ojuny-project",
         "repo": "nix-cleaner",
-        "rev": "46afad8d29910e0f1fecbba6eec02554dd4294bc",
+        "rev": "be7dafd4aa66d672abfe6cca54c69e6375f89b89",
         "type": "github"
       },
       "original": {
-        "owner": "SDG-Den",
+        "owner": "ojuny-project",
         "repo": "nix-cleaner",
         "type": "github"
       }
@@ -1020,15 +1020,15 @@
         ]
       },
       "locked": {
-        "lastModified": 1792250109,
-        "narHash": "sha256-ZKVitdEEPp3D4NJ4AUQptIs2U5tfouFnkMsMnLXOXbE=",
-        "owner": "SDG-Den",
+        "lastModified": 1793740981,
+        "narHash": "sha256-STs/6xLZN27KQjfDuS35m2hLZS/B+69N4wOZMDvnPQE=",
+        "owner": "ojuny-project",
         "repo": "nix-regedit",
-        "rev": "2c87e82bc5b88f26ed90de7479a7ede0244510a2",
+        "rev": "4a770e19512015381eb747b92f85468d406d8235",
         "type": "github"
       },
       "original": {
-        "owner": "SDG-Den",
+        "owner": "ojuny-project",
         "repo": "nix-regedit",
         "type": "github"
       }
@@ -1043,15 +1043,15 @@
         "tinted-theming": "tinted-theming"
       },
       "locked": {
-        "lastModified": 1793721099,
-        "narHash": "sha256-ZS8Nt/nI4hoNMThGO9QryMT1hNRKrlQhICEc9QLrXj0=",
-        "owner": "SDG-Den",
+        "lastModified": 1793740985,
+        "narHash": "sha256-DwtEjoHWva1HGHpS2mOJeyXWYyJLYr1oyzsERHc+fZI=",
+        "owner": "ojuny-project",
         "repo": "nix-settings-gui",
-        "rev": "0585cfda6b62790e4b29bf165260a7c878f081ef",
+        "rev": "b508d2904d4aa47029693d34caa1aed611c4a86a",
         "type": "github"
       },
       "original": {
-        "owner": "SDG-Den",
+        "owner": "ojuny-project",
         "repo": "nix-settings-gui",
         "type": "github"
       }
@@ -1065,15 +1065,15 @@
         ]
       },
       "locked": {
-        "lastModified": 1791451886,
-        "narHash": "sha256-d62m/cCnjFOA8S9f3eC3qGuy9XLi9jg5Agmpemvos0g=",
-        "owner": "SDG-Den",
+        "lastModified": 1793740987,
+        "narHash": "sha256-CSesO2kti8SCIhNElnwpas8Y/SLXnhB9EEPz5yLYQNA=",
+        "owner": "ojuny-project",
         "repo": "nix-shell-gui",
-        "rev": "4584aa0460d443fe32ccb776e90fe6a85b4026bc",
+        "rev": "6f431be8c1cf6e97a84b18a3cbc3404c4b8b9e08",
         "type": "github"
       },
       "original": {
-        "owner": "SDG-Den",
+        "owner": "ojuny-project",
         "repo": "nix-shell-gui",
         "type": "github"
       }
@@ -1288,11 +1288,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793453282,
-        "narHash": "sha256-3g1ZbuBIfU/5goyMBMlwmo8Ss6nxF1lh+9IOQZ6YlW4=",
+        "lastModified": 1793740995,
+        "narHash": "sha256-PBTInNaFceia4YjBapGpyFFwXY8TCe5YPkg0Vv6y5uI=",
         "owner": "ojuny-project",
         "repo": "ojuny-cli",
-        "rev": "bd216aa5e9d2ce33fd9332e2e71f190f9399f277",
+        "rev": "f742905c494f200bc7344eed718acf33d5e4a78e",
         "type": "github"
       },
       "original": {
@@ -1326,11 +1326,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793639102,
-        "narHash": "sha256-JVr9gv/QbkcwAK5RcizrxkwnER5psh+SCs9azY5RNZU=",
+        "lastModified": 1793740993,
+        "narHash": "sha256-NMHA3CmUEA7HjZCXP7/1wXFiijde8K5DhW7Upu/SdQw=",
         "owner": "ojuny-project",
         "repo": "ojuny-desktop",
-        "rev": "34462aaf3692b4e9d60de9b7973a1c163b667e2b",
+        "rev": "1ed6068311f9bcee2fc4e587520796c7e537ff78",
         "type": "github"
       },
       "original": {
@@ -1366,11 +1366,11 @@
         "stylix": "stylix"
       },
       "locked": {
-        "lastModified": 1793721113,
-        "narHash": "sha256-naH5hyktO9nIV3lVA6qHKn38S6SlwKnmR1B9kbHwLXc=",
+        "lastModified": 1793741009,
+        "narHash": "sha256-jF3dnMHMGfotob4GFIX9GP8HNjTB67UU2/phzRW+lok=",
         "owner": "ojuny-project",
         "repo": "ojuny-template",
-        "rev": "904c03800634a10fd7ea25f033b788c9996dd4cb",
+        "rev": "65baf4985024d249e951154e80f697c15cd5de5c",
         "type": "github"
       },
       "original": {
@@ -1484,13 +1484,13 @@
       "locked": {
         "lastModified": 1792250095,
         "narHash": "sha256-MX7bWbQKSA4mNoMPkIgn3p1yUihwF26RVsgNT788SDA=",
-        "owner": "SDG-Den",
+        "owner": "ojuny-project",
         "repo": "simple-nix-update-gui",
         "rev": "284fe4add822103b0469d1bc524d22e788b1e1af",
         "type": "github"
       },
       "original": {
-        "owner": "SDG-Den",
+        "owner": "ojuny-project",
         "repo": "simple-nix-update-gui",
         "type": "github"
       }

@@ -50,7 +50,7 @@ in
   disko.devices.disk.main = {
     device = "/dev/vda";
     type = "disk";
-    imageSize = "16G";
+    imageSize = "32G";
     imageName = "ojuny-persistent";
     content = {
       type = "gpt";
