@@ -34,6 +34,8 @@ in
     ./live-media-eject.nix
 
     inputs.ojuny-template.modules.nixos.system-graphics
+    inputs.ojuny-template.modules.nixos.system-accessibility
+    inputs.ojuny-template.modules.nixos.applications-browser
     inputs.ojuny-template.modules.nixos.desktop-mango
     inputs.ojuny-template.modules.nixos.desktop-mangosettings
     inputs.ojuny-template.modules.nixos.desktop-mangomaster
@@ -139,6 +141,7 @@ in
 
   security.polkit.enablePkexecWrapper = true;
   programs.partition-manager.enable = true;
+  time.timeZone = "UTC";
   i18n.supportedLocales = [ "all" ];
 
   environment.systemPackages = [
