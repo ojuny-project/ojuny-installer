@@ -49,20 +49,26 @@ done
 
 mkdir -p "$output_dir"
 
+build_dir="$(mktemp -d)"
+trap 'rm -rf "$build_dir"' EXIT
+
 echo "building the persistent image"
-"$OJUNY_DISKO_IMAGE_SCRIPT" "${build_args[@]}"
+status=0
+(
+  cd "$build_dir"
+  "$OJUNY_DISKO_IMAGE_SCRIPT" "${build_args[@]}"
+) || status=$?
 
-raw=""
-for candidate in ./*.raw; do
-  [ -f "$candidate" ] || continue
-  if [ -z "$raw" ] || [ "$candidate" -nt "$raw" ]; then
-    raw="$candidate"
-  fi
-done
-
+raw="$(find "$build_dir" -maxdepth 1 -type f -name '*.raw' -print -quit)"
 if [ -z "$raw" ]; then
   echo "make-persistent-image: the disko image builder produced no .raw file" >&2
   exit 1
+fi
+
+if [ "$status" -ne 0 ]; then
+  mv "$raw" "$output_dir/ojuny-persistent.failed.raw"
+  echo "make-persistent-image: build failed, partial image at $output_dir/ojuny-persistent.failed.raw" >&2
+  exit "$status"
 fi
 
 image="$output_dir/ojuny-persistent.img"

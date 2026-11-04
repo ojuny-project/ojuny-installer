@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import glob
 import json
 import os
 import re
@@ -64,6 +65,167 @@ def is_mounted(disk):
             if source == real or source.startswith(real):
                 return True
     return False
+
+
+def mount_source(mountpoint):
+    try:
+        return output(["findmnt", "-no", "SOURCE", mountpoint])
+    except Exception:
+        return ""
+
+
+def live_medium_disks():
+    disks = set()
+    for mountpoint in ("/iso", "/nix/.ro-store", "/nix/store"):
+        source = mount_source(mountpoint)
+        if not source.startswith("/dev/"):
+            continue
+        try:
+            parents = output(["lsblk", "-no", "PKNAME", source]).splitlines()
+        except Exception:
+            parents = []
+        if parents:
+            disks.add("/dev/" + parents[0].strip())
+        else:
+            disks.add(os.path.realpath(source))
+    return disks
+
+
+def stable_disk_path(path):
+    target = os.path.realpath(path)
+    for candidate in sorted(glob.glob("/dev/disk/by-id/*")):
+        if candidate.endswith("-part") or "-part" in os.path.basename(candidate):
+            continue
+        if os.path.realpath(candidate) == target:
+            return candidate
+    return path
+
+
+def disk_candidates(settings):
+    report = json.loads(
+        output(
+            [
+                "lsblk",
+                "-J",
+                "-b",
+                "-o",
+                "NAME,PATH,TYPE,SIZE,RM,RO,TRAN,FSTYPE,MOUNTPOINTS,MODEL,PARTLABEL",
+            ]
+        )
+    )
+    live = live_medium_disks()
+    candidates = []
+    skipped = []
+
+    def children(node):
+        for child in node.get("children") or []:
+            yield child
+            yield from children(child)
+
+    for node in report.get("blockdevices", []):
+        path = node.get("path") or ""
+        if node.get("type") != "disk":
+            continue
+        size = int(node.get("size") or 0)
+        reason = None
+        if node.get("rm"):
+            reason = "removable or external"
+        elif node.get("ro"):
+            reason = "read-only"
+        elif (node.get("tran") or "").lower() == "usb":
+            reason = "USB or external"
+        elif size < MIN_DISK_BYTES:
+            reason = "smaller than 8 GiB"
+        elif os.path.realpath(path) in live:
+            reason = "live install medium"
+        else:
+            for child in children(node):
+                if (child.get("fstype") or "").lower() == "vfat":
+                    reason = "contains an existing vfat partition"
+                    break
+                if any(child.get("mountpoints") or []):
+                    reason = "contains a mounted partition"
+                    break
+            if reason is None and any(node.get("mountpoints") or []):
+                reason = "mounted"
+
+        if reason:
+            skipped.append((path or node.get("name") or "unknown", reason))
+            continue
+        candidates.append(
+            {
+                "path": stable_disk_path(path),
+                "size": size,
+                "model": (node.get("model") or "unknown").strip(),
+            }
+        )
+
+    for path, reason in skipped:
+        log("skipping {}: {}".format(path, reason))
+    return candidates
+
+
+def resolve_disk(settings):
+    requested = settings.get("disk")
+    if requested and requested != "auto":
+        return requested
+
+    candidates = disk_candidates(settings)
+    if not candidates:
+        raise RuntimeError(
+            "no eligible target disk found; connect an internal disk without a vfat partition"
+        )
+    if len(candidates) == 1:
+        candidate = candidates[0]
+        log(
+            "selected {} ({}, {:.1f} GiB)".format(
+                candidate["path"], candidate["model"], candidate["size"] / 1024**3
+            )
+        )
+        return candidate["path"]
+
+    log("multiple eligible target disks found:")
+    for index, candidate in enumerate(candidates, 1):
+        log(
+            "  {}) {} ({}, {:.1f} GiB)".format(
+                index,
+                candidate["path"],
+                candidate["model"],
+                candidate["size"] / 1024**3,
+            )
+        )
+    while True:
+        sys.stdout.write("Select the target disk number: ")
+        sys.stdout.flush()
+        line = sys.stdin.readline()
+        if not line:
+            raise RuntimeError("no target disk selected")
+        try:
+            choice = int(line.strip())
+        except ValueError:
+            continue
+        if 1 <= choice <= len(candidates):
+            return candidates[choice - 1]["path"]
+
+
+def resolve_firmware(settings):
+    requested = settings.get("firmware")
+    if requested and requested != "auto":
+        return requested
+    return "efi" if os.path.isdir("/sys/firmware/efi") else "bios"
+
+
+def write_runtime_disk_config(disk):
+    with open(DISKO_CONFIG) as handle:
+        text = handle.read()
+    if "@OJUNY_DISK@" not in text:
+        return DISKO_CONFIG
+    runtime_dir = "/run/ojuny"
+    os.makedirs(runtime_dir, exist_ok=True)
+    path = os.path.join(runtime_dir, "disk-config.nix")
+    with open(path, "w") as handle:
+        handle.write(text.replace("@OJUNY_DISK@", disk))
+    return path
 
 
 def validate_disk(disk):
@@ -648,8 +810,10 @@ def restore_offline_inputs(rewrite):
 
 def install():
     settings = read_settings()
-    disk = settings["disk"]
-    firmware = settings["firmware"]
+    disk = resolve_disk(settings)
+    firmware = resolve_firmware(settings)
+    settings["disk"] = disk
+    settings["firmware"] = firmware
     mode = settings["mode"]
     clone_relative = settings.get("cloneRelative") or "repos/nix-flake"
 
@@ -658,6 +822,7 @@ def install():
     if not OFFLINE:
         wait_for_network()
 
+    disk_config = write_runtime_disk_config(disk)
     run(
         [
             "disko",
@@ -665,7 +830,7 @@ def install():
             "destroy,format,mount",
             "--root-mountpoint",
             MOUNT,
-            DISKO_CONFIG,
+            disk_config,
         ]
     )
 

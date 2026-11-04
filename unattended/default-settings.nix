@@ -1,7 +1,7 @@
 {
   mode = "bundled";
-  disk = "/dev/disk/by-id/CHANGE-ME";
-  firmware = "efi";
+  disk = "auto";
+  firmware = "auto";
   host = "ojuny";
   username = "user";
   fullName = "Primary account";

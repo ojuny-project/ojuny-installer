@@ -4,8 +4,8 @@ set -euo pipefail
 REPO_ROOT="${OJUNY_INSTALLER_SOURCE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 
 flake="${OJUNY_FLAKE:-}"
-disk=""
-firmware="efi"
+disk="auto"
+firmware="auto"
 mode="bundled"
 host="ojuny"
 username="user"
@@ -43,8 +43,9 @@ the flake and leaves the modified copy at /home/<user>/repos/nix-flake.
 Options:
   --template URL|PATH    Template fork used through --override-input
   --flake URL|PATH       Alias for --template
-  --disk DEVICE         Target disk, preferably /dev/disk/by-id/...
-  --firmware efi|bios   Target firmware (default: efi)
+  --disk DEVICE         Target disk, or auto to select at boot (default: auto)
+  --firmware auto|efi|bios
+                        Target firmware (default: auto)
   --mode prepared|bundled
                         Use the fork as-is or generate user/host (default: prepared)
   --host NAME           Host name for bundled mode (empty: detect or use ojuny)
@@ -195,7 +196,6 @@ while [ "$#" -gt 0 ]; do
 done
 
 if [ "$interactive" -eq 1 ]; then
-  printf '\033[2J\033[H'
   cat <<'EOF'
 ============================================================
   Ojuny unattended ISO
@@ -225,13 +225,13 @@ EOF
   read -r -p "Template URL or path [github:ojuny-project/ojuny-template]: " answer
   flake="${answer:-github:ojuny-project/ojuny-template}"
 
-  read -r -p "Target disk [/dev/disk/by-id/CHANGE-ME]: " answer
-  disk="${answer:-/dev/disk/by-id/CHANGE-ME}"
+  read -r -p "Target disk [auto]: " answer
+  disk="${answer:-auto}"
 
   PS3="Firmware: "
-  select choice in "efi" "bios"; do
+  select choice in "auto" "efi" "bios"; do
     case "$choice" in
-      efi | bios)
+      auto | efi | bios)
         firmware="$choice"
         break
         ;;
@@ -355,9 +355,9 @@ case "$mode" in
 esac
 
 case "$firmware" in
-  efi | bios) ;;
+  auto | efi | bios) ;;
   *)
-    echo "make-unattended-iso: firmware must be efi or bios" >&2
+    echo "make-unattended-iso: firmware must be auto, efi or bios" >&2
     exit 2
     ;;
 esac
@@ -375,9 +375,9 @@ if [ -z "$disk" ]; then
 fi
 
 case "$disk" in
-  /dev/*) ;;
+  auto | /dev/*) ;;
   *)
-    echo "make-unattended-iso: disk must start with /dev/" >&2
+    echo "make-unattended-iso: disk must be auto or start with /dev/" >&2
     exit 2
     ;;
 esac
@@ -392,7 +392,7 @@ if [ "$encryption_enable" -eq 1 ] && [ -z "$encryption_passphrase" ]; then
   exit 2
 fi
 
-if [ ! -b "$disk" ]; then
+if [ "$disk" != "auto" ] && [ ! -b "$disk" ]; then
   echo "make-unattended-iso: warning: $disk is not attached to this machine" >&2
 fi
 

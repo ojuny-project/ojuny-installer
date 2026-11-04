@@ -12,6 +12,7 @@ image as a virtual disk. Ventoy is not required.
 - `/nix/store` is an overlay. Its lower layer is `/persist/nix/store`, which is
   never written to by the running system. Its upper layer is the tmpfs.
 - `/home` is bind-mounted from `/persist/home` by impermanence.
+- `/var/lib/nixos` is also persisted so system user and group IDs stay stable.
 - `/etc`, `/var`, `/nix/var` and all other root paths are transient.
 
 Package installs and system changes written to `/nix` live in the tmpfs overlay
@@ -64,7 +65,7 @@ file, or a persistence partition on the Ventoy disk.
 ## Limitations
 
 - The image is UEFI and BIOS bootable through GRUB.
-- Only `/home` persists. System updates and package installs are transient.
+- `/home` and `/var/lib/nixos` persist. System updates and package installs are transient.
 - The first boot needs the image's full store, so the image is larger than the
   live ISOs.
 - The image is x86_64 only.

@@ -48,7 +48,7 @@ let
 
   diskConfig = {
     disko.devices.disk.main = {
-      device = settings.disk;
+      device = if settings.disk == "auto" then "@OJUNY_DISK@" else settings.disk;
       type = "disk";
       content = {
         type = "gpt";
@@ -141,15 +141,17 @@ in
 
   assertions = [
     {
-      assertion = settings.disk != null && lib.hasPrefix "/dev/" settings.disk;
-      message = "unattended.disk must be a /dev path";
+      assertion =
+        settings.disk == "auto" || (settings.disk != null && lib.hasPrefix "/dev/" settings.disk);
+      message = "unattended.disk must be auto or a /dev path";
     }
     {
       assertion = builtins.elem settings.firmware [
+        "auto"
         "efi"
         "bios"
       ];
-      message = "unattended.firmware must be efi or bios";
+      message = "unattended.firmware must be auto, efi or bios";
     }
     {
       assertion = builtins.elem settings.mode [

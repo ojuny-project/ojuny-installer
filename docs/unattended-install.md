@@ -79,8 +79,8 @@ The settings are stored in a temporary flake input. They never enter the
 repository. The password is hashed with `mkpasswd` before the ISO is built.
 
 - `mode`: `prepared` or `bundled`.
-- `disk`: target block device, preferably `/dev/disk/by-id/...`.
-- `firmware`: `efi` or `bios`.
+- `disk`: `auto` or a block device, preferably `/dev/disk/by-id/...`.
+- `firmware`: `auto`, `efi` or `bios`.
 - `host`, `username`, `fullName`, `hashedPassword`, `sshKeys`.
 - `shell`, `timezone`, `locale`, `keymap`.
 - `swapSize`: `0` disables the swap partition.
@@ -88,6 +88,33 @@ repository. The password is hashed with `mkpasswd` before the ISO is built.
 - `finalAction`: `reboot` or `poweroff`.
 - `cloneRelative`: path below the home directory, default `repos/nix-flake`.
 - `stateVersion`: used by bundled mode.
+
+## Generic disk and firmware selection
+
+The default settings use:
+
+```nix
+disk = "auto";
+firmware = "auto";
+```
+
+At boot the installer lists disks and rejects any disk that is:
+
+- removable or connected over USB
+- read-only
+- smaller than 8 GiB
+- the live install medium
+- mounted or containing a mounted partition
+- containing an existing vfat partition
+
+If exactly one eligible disk remains, it is selected after the countdown. If
+several remain, the installer shows a console menu with the device path, size
+and model, and requires an explicit number. If none remain, it fails to tty1.
+
+Firmware is selected from `/sys/firmware/efi`: systemd-boot on UEFI, GRUB on
+BIOS. The disko layout always creates both the ESP and the BIOS boot partition.
+
+An explicit `/dev/...` value bypasses the filters and is used as-is.
 
 ## Hardware test checklist
 

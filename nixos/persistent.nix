@@ -55,10 +55,15 @@ in
     content = {
       type = "gpt";
       partitions = {
+        boot = {
+          size = "1M";
+          type = "EF02";
+          priority = 1;
+        };
         ESP = {
           size = "1G";
           type = "EF00";
-          priority = 1;
+          priority = 2;
           content = {
             type = "filesystem";
             format = "vfat";
@@ -72,7 +77,7 @@ in
         };
         root = {
           size = "100%";
-          priority = 2;
+          priority = 4;
           content = {
             type = "filesystem";
             format = "ext4";
@@ -124,7 +129,10 @@ in
 
   environment.persistence."/persist" = {
     hideMounts = true;
-    directories = [ "/home" ];
+    directories = [
+      "/home"
+      "/var/lib/nixos"
+    ];
   };
 
   boot.loader.systemd-boot.enable = lib.mkForce false;
