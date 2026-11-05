@@ -14,7 +14,6 @@
     inputs.ojuny-template.modules.nixos.system-accessibility
     inputs.ojuny-template.modules.nixos.system-nixsettings
     inputs.ojuny-template.modules.nixos.system-updates
-    inputs.ojuny-template.modules.nixos.system-ojuny-cli
 
     inputs.ojuny-template.modules.nixos.users-commonsettings
     inputs.ojuny-template.modules.nixos.users
