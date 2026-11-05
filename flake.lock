@@ -967,24 +967,6 @@
         "type": "github"
       }
     },
-    "nix-cache-discovery-binary": {
-      "inputs": {
-        "nixpkgs": [
-          "ojuny-template",
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1793822747,
-        "narHash": "sha256-yAWkEu/RKEEoJGl7giW5/7mhOSgdeSt+zyM4ErG2V4o=",
-        "type": "tarball",
-        "url": "https://github.com/ojuny-project/nix-cache-discovery/releases/download/v0.1.0-hotfix-1/nix-cache-discovery-flake.tar.gz"
-      },
-      "original": {
-        "type": "tarball",
-        "url": "https://github.com/ojuny-project/nix-cache-discovery/releases/download/v0.1.0-hotfix-1/nix-cache-discovery-flake.tar.gz"
-      }
-    },
     "nix-cache-discovery_2": {
       "inputs": {
         "nixpkgs": [
@@ -993,11 +975,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793822537,
-        "narHash": "sha256-8ety8+BFMFYhCtGx7h1EQanXkZ00eVb9h88IPecM770=",
+        "lastModified": 1793911844,
+        "narHash": "sha256-C+WGn36146aWGOtdhM5xwTm7/ajw4/SSqFvmuop2w9A=",
         "owner": "ojuny-project",
         "repo": "nix-cache-discovery",
-        "rev": "51adaa3f25daa2749f61fe8f643ea15020ebd9cd",
+        "rev": "e267aa57fed24cc5cfb4f03010409e30f892fdba",
         "type": "github"
       },
       "original": {
@@ -1015,35 +997,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1793822535,
-        "narHash": "sha256-70KQNETcsegAMfln3dk4X7lpW93fhG+37O3oeMckgK4=",
+        "lastModified": 1793911843,
+        "narHash": "sha256-S44RqvqLwSCWXxpBwENTLBM4p/VRIGSgfbWYZF9SnSw=",
         "owner": "ojuny-project",
         "repo": "nix-cleaner",
-        "rev": "3cba5141b90bd72ca0c7673ca6f8f594ace2eccf",
+        "rev": "68e625e78c622042febcb8a8639e5f3c55038b2c",
         "type": "github"
       },
       "original": {
         "owner": "ojuny-project",
         "repo": "nix-cleaner",
         "type": "github"
-      }
-    },
-    "nix-cleaner-binary": {
-      "inputs": {
-        "nixpkgs": [
-          "ojuny-template",
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1793822835,
-        "narHash": "sha256-uMEoYTk1yv7ynEwgSraabsyS6A+mOEMISUUxXkSNW/g=",
-        "type": "tarball",
-        "url": "https://github.com/ojuny-project/nix-cleaner/releases/download/v0.1.0-hotfix-1/nix-cleaner-flake.tar.gz"
-      },
-      "original": {
-        "type": "tarball",
-        "url": "https://github.com/ojuny-project/nix-cleaner/releases/download/v0.1.0-hotfix-1/nix-cleaner-flake.tar.gz"
       }
     },
     "nix-regedit": {
@@ -1056,35 +1020,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1793822546,
-        "narHash": "sha256-NBDJ1P+ieXO8dfc/E8ZJ+iBT9TiBG6BaRdPEPkw8hMk=",
+        "lastModified": 1793911847,
+        "narHash": "sha256-mXbBNCaD1l91vjzagOCKIg/AC+8cPOz5aeTfXfQBDEA=",
         "owner": "ojuny-project",
         "repo": "nix-regedit",
-        "rev": "268210ecfc223d59dffa2ab08308df6549ddf8a9",
+        "rev": "6621d1570178274adbb653d11963fea3dc363156",
         "type": "github"
       },
       "original": {
         "owner": "ojuny-project",
         "repo": "nix-regedit",
         "type": "github"
-      }
-    },
-    "nix-regedit-binary": {
-      "inputs": {
-        "nixpkgs": [
-          "ojuny-template",
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1793822904,
-        "narHash": "sha256-N9X+ncYHXaFG02dObH0DdcfsQckctlkdUIUslx1NrDo=",
-        "type": "tarball",
-        "url": "https://github.com/ojuny-project/nix-regedit/releases/download/v0.1.0-hotfix-4/nix-regedit-flake.tar.gz"
-      },
-      "original": {
-        "type": "tarball",
-        "url": "https://github.com/ojuny-project/nix-regedit/releases/download/v0.1.0-hotfix-4/nix-regedit-flake.tar.gz"
       }
     },
     "nix-settings-gui": {
@@ -1097,35 +1043,17 @@
         "tinted-theming": "tinted-theming"
       },
       "locked": {
-        "lastModified": 1793893035,
-        "narHash": "sha256-EUp73fDti6a/e22GGZXEFpCwiDLMZ4N+2Z7pBPITDog=",
+        "lastModified": 1793911848,
+        "narHash": "sha256-cyMSHG8mIDyVvhmXMtzbA9+KJCGrDatJHU+J3gEegYA=",
         "owner": "ojuny-project",
         "repo": "nix-settings-gui",
-        "rev": "a0fba8a16622c57c31fb7dcf7d0fe95b16b3ad54",
+        "rev": "014dda38e52be324205d24f9829394a38a4a435a",
         "type": "github"
       },
       "original": {
         "owner": "ojuny-project",
         "repo": "nix-settings-gui",
         "type": "github"
-      }
-    },
-    "nix-settings-gui-binary": {
-      "inputs": {
-        "nixpkgs": [
-          "ojuny-template",
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1793822951,
-        "narHash": "sha256-v6rzS5zEuVXI7C6Gg+Gs3web36jdFsnUvAWCoAk5ndA=",
-        "type": "tarball",
-        "url": "https://github.com/ojuny-project/nix-settings-gui/releases/download/v0.1.0-hotfix-1/nix-settings-gui-flake.tar.gz"
-      },
-      "original": {
-        "type": "tarball",
-        "url": "https://github.com/ojuny-project/nix-settings-gui/releases/download/v0.1.0-hotfix-1/nix-settings-gui-flake.tar.gz"
       }
     },
     "nix-shell-gui": {
@@ -1137,35 +1065,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1793832458,
-        "narHash": "sha256-H38ukcj+Q9hEidfKX2jmM1xWQ6xgV7dmi4np0TT8JjY=",
+        "lastModified": 1793911850,
+        "narHash": "sha256-ILITtgzOer2p8dSIXB8uNERnKHdtjOGNDOvfy4YheVk=",
         "owner": "ojuny-project",
         "repo": "nix-shell-gui",
-        "rev": "6df30f2aa85c67419a19187cd41d3f513715fc87",
+        "rev": "ee9b46da8d68e80cba02314bc21e7b4949559402",
         "type": "github"
       },
       "original": {
         "owner": "ojuny-project",
         "repo": "nix-shell-gui",
         "type": "github"
-      }
-    },
-    "nix-shell-gui-binary": {
-      "inputs": {
-        "nixpkgs": [
-          "ojuny-template",
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1793822650,
-        "narHash": "sha256-8A/gyNB7Y7pixYemUC/oirg/9P5og5sf0+EaRUQxRZc=",
-        "type": "tarball",
-        "url": "https://github.com/ojuny-project/nix-shell-gui/releases/download/v0.1.0-hotfix-1/nix-shell-gui-flake.tar.gz"
-      },
-      "original": {
-        "type": "tarball",
-        "url": "https://github.com/ojuny-project/nix-shell-gui/releases/download/v0.1.0-hotfix-1/nix-shell-gui-flake.tar.gz"
       }
     },
     "nix-vm-test": {
@@ -1378,35 +1288,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1793862662,
-        "narHash": "sha256-tq9Dx2uuZ9E3o0g0E+k6rRxeC1NtfVkcGBUr486Bonk=",
+        "lastModified": 1793911839,
+        "narHash": "sha256-xS60aqoJzl1xq72Oen0yfNUQLf9bPQ7GRlg5UyXJo4o=",
         "owner": "ojuny-project",
         "repo": "ojuny-cli",
-        "rev": "b4ad752f0ceeecf9ce51bc8bc92c3b7945589792",
+        "rev": "3bb3a97255783844711f55dfa3db08343f19166d",
         "type": "github"
       },
       "original": {
         "owner": "ojuny-project",
         "repo": "ojuny-cli",
         "type": "github"
-      }
-    },
-    "ojuny-cli-binary": {
-      "inputs": {
-        "nixpkgs": [
-          "ojuny-template",
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1793822719,
-        "narHash": "sha256-Yz7IVUye0fMfsH9JQ2icUUNah4HLf1DVrQo1sG2lLak=",
-        "type": "tarball",
-        "url": "https://github.com/ojuny-project/ojuny-cli/releases/download/v0.1.0-hotfix-1/ojuny-cli-flake.tar.gz"
-      },
-      "original": {
-        "type": "tarball",
-        "url": "https://github.com/ojuny-project/ojuny-cli/releases/download/v0.1.0-hotfix-1/ojuny-cli-flake.tar.gz"
       }
     },
     "ojuny-desktop": {
@@ -1455,35 +1347,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1793862658,
-        "narHash": "sha256-YeVfWe9/LXs2x5DvYlLdSSADpKm8ApWEuI9at/C4rLM=",
+        "lastModified": 1793911841,
+        "narHash": "sha256-zWLt7uuWnwZN2X4BGBlZOSbGJMMN06NBXBqGWwS7CHs=",
         "owner": "ojuny-project",
         "repo": "ojuny-manual",
-        "rev": "ff31e3b133c7d1b0302d97cf42ff88e91c3c9fa7",
+        "rev": "83cd4f63268c9dc7f60dc4623be56fa7c112cd82",
         "type": "github"
       },
       "original": {
         "owner": "ojuny-project",
         "repo": "ojuny-manual",
         "type": "github"
-      }
-    },
-    "ojuny-manual-binary": {
-      "inputs": {
-        "nixpkgs": [
-          "ojuny-template",
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1793822618,
-        "narHash": "sha256-HXitDvaTC6RJxIiR6jyVKiZIibXI80RPIcMLVIQT/S0=",
-        "type": "tarball",
-        "url": "https://github.com/ojuny-project/ojuny-manual/releases/download/v0.1.0-hotfix-1/ojuny-manual-flake.tar.gz"
-      },
-      "original": {
-        "type": "tarball",
-        "url": "https://github.com/ojuny-project/ojuny-manual/releases/download/v0.1.0-hotfix-1/ojuny-manual-flake.tar.gz"
       }
     },
     "ojuny-template": {
@@ -1500,33 +1374,25 @@
         "import-tree": "import-tree",
         "lanzaboote": "lanzaboote",
         "nix-cache-discovery": "nix-cache-discovery_2",
-        "nix-cache-discovery-binary": "nix-cache-discovery-binary",
         "nix-cleaner": "nix-cleaner",
-        "nix-cleaner-binary": "nix-cleaner-binary",
         "nix-regedit": "nix-regedit",
-        "nix-regedit-binary": "nix-regedit-binary",
         "nix-settings-gui": "nix-settings-gui",
-        "nix-settings-gui-binary": "nix-settings-gui-binary",
         "nix-shell-gui": "nix-shell-gui",
-        "nix-shell-gui-binary": "nix-shell-gui-binary",
         "nixos-anywhere": "nixos-anywhere",
         "nixos-hardware": "nixos-hardware",
         "nixpkgs": "nixpkgs",
         "ojuny-cli": "ojuny-cli",
-        "ojuny-cli-binary": "ojuny-cli-binary",
         "ojuny-desktop": "ojuny-desktop",
         "ojuny-manual": "ojuny-manual",
-        "ojuny-manual-binary": "ojuny-manual-binary",
         "simple-nix-update-gui": "simple-nix-update-gui",
-        "simple-nix-update-gui-binary": "simple-nix-update-gui-binary",
         "stylix": "stylix"
       },
       "locked": {
-        "lastModified": 1793893050,
-        "narHash": "sha256-jGv4JXu8JVIGbzXO/GFuXLmGAMHfD+6gA2qoZ8hgfRw=",
+        "lastModified": 1793912033,
+        "narHash": "sha256-EOc3p2BcYVz2S9PfXzkUbmWv0UohUdFmo8ia7EBjDVY=",
         "owner": "ojuny-project",
         "repo": "ojuny-template",
-        "rev": "eabd21e2d7123958e435ca7584a5e03bcb585988",
+        "rev": "7d1ff8d81ac6e0c77d7eba78da37fd36df2a334a",
         "type": "github"
       },
       "original": {
@@ -1638,35 +1504,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1793893033,
-        "narHash": "sha256-YjKtOTheuErQ/qedwNRiclUqLsv9vBPmJLcHp4F5Jf0=",
+        "lastModified": 1793911852,
+        "narHash": "sha256-9pbLAHUZ7eanKNl8w2IPuai7dmHQPGfziawmXVV1rsA=",
         "owner": "ojuny-project",
         "repo": "simple-nix-update-gui",
-        "rev": "d9280f73ec3c26ef669282d7cfdb823e865b8d12",
+        "rev": "dc8b99736a77429a608ec8a5c72beb13b8505501",
         "type": "github"
       },
       "original": {
         "owner": "ojuny-project",
         "repo": "simple-nix-update-gui",
         "type": "github"
-      }
-    },
-    "simple-nix-update-gui-binary": {
-      "inputs": {
-        "nixpkgs": [
-          "ojuny-template",
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1793823100,
-        "narHash": "sha256-luc/1x139c3+B5qC1Wp3o6nLGH3YJpLiHifOnmlfqVA=",
-        "type": "tarball",
-        "url": "https://github.com/ojuny-project/simple-nix-update-gui/releases/download/v0.1.0-hotfix-1/simple-nix-update-gui-flake.tar.gz"
-      },
-      "original": {
-        "type": "tarball",
-        "url": "https://github.com/ojuny-project/simple-nix-update-gui/releases/download/v0.1.0-hotfix-1/simple-nix-update-gui-flake.tar.gz"
       }
     },
     "stylix": {
