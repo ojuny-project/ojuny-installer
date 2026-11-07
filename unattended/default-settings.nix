@@ -17,7 +17,7 @@
     passphrase = null;
   };
   cloneRelative = "repos/nix-flake";
-  stateVersion = "25.05";
+  stateVersion = "26.11";
   confirmSeconds = 10;
   finalAction = "reboot";
 }

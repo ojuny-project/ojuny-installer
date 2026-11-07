@@ -76,6 +76,12 @@ Git pre-setup assertions:
 - `~/.git-credentials` exists with mode `0600` only for an HTTPS origin with a
   token.
 
+## Install log
+
+The installer writes a timestamped log to `~/ojuny-install.log` on the
+installed system. It contains the installer phases, the `nixos-install` output
+and the Calamares log. Copy it off the machine after a run.
+
 ## Failure cases to exercise by hand
 
 - Prepared mode with a bad URL stops before `nixos-install` and shows the clone

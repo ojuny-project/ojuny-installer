@@ -116,6 +116,12 @@ BIOS. The disko layout always creates both the ESP and the BIOS boot partition.
 
 An explicit `/dev/...` value bypasses the filters and is used as-is.
 
+## Install log
+
+The unattended installer writes a timestamped log to `~/ojuny-install.log` on
+the installed system. It contains the installer phases and the `nixos-install`
+output. Copy it off the machine after a run.
+
 ## Hardware test checklist
 
 No QEMU run is part of this repository. Test each image on real hardware:

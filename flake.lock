@@ -954,11 +954,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793912331,
-        "narHash": "sha256-tgC2IyO4/t58mLvmQcUj9P88dCwflXWDrpjFLUyFIB4=",
+        "lastModified": 1794038639,
+        "narHash": "sha256-rvQJYrr/mi5Yix0mKrtiETVlmrxyT9sdz1igGaqTMgY=",
         "owner": "ojuny-project",
         "repo": "nix-cache-discovery",
-        "rev": "a1c26ba3f21c741a4987020cf6dfda64baeeae08",
+        "rev": "ffa945e965d826213d3c61e2bf69143509c60901",
         "type": "github"
       },
       "original": {
@@ -975,11 +975,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793912331,
-        "narHash": "sha256-tgC2IyO4/t58mLvmQcUj9P88dCwflXWDrpjFLUyFIB4=",
+        "lastModified": 1794038639,
+        "narHash": "sha256-rvQJYrr/mi5Yix0mKrtiETVlmrxyT9sdz1igGaqTMgY=",
         "owner": "ojuny-project",
         "repo": "nix-cache-discovery",
-        "rev": "a1c26ba3f21c741a4987020cf6dfda64baeeae08",
+        "rev": "ffa945e965d826213d3c61e2bf69143509c60901",
         "type": "github"
       },
       "original": {
@@ -997,11 +997,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793912330,
-        "narHash": "sha256-9gWHJP1B34CrZ0DQawSd4g5cNCTpXSKNOu5VdRFG/B8=",
+        "lastModified": 1794038632,
+        "narHash": "sha256-64JPHFrhAKV3y74GMhWWU3Gtsu8qLAPDiVGbXTnwg5w=",
         "owner": "ojuny-project",
         "repo": "nix-cleaner",
-        "rev": "61adfa6ab8207cb9ef0e81d3ab623aa1f126a56b",
+        "rev": "8cf37df053c7db48be3663e7edb457985149a530",
         "type": "github"
       },
       "original": {
@@ -1020,11 +1020,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793912333,
-        "narHash": "sha256-900q+G6nv63Qrz/ixEfKvAn57bJBaQmJSK4TQF8ScRk=",
+        "lastModified": 1794038631,
+        "narHash": "sha256-NfBKtlZM0+NIAnNxCTOWDOSMFhZ56oH4LnXHANcOUjk=",
         "owner": "ojuny-project",
         "repo": "nix-regedit",
-        "rev": "34ee8f294f9d409c0822b5fb2a68eaa46f30f6c9",
+        "rev": "1946110583edacfdbc7e7819be4fb80413ea3744",
         "type": "github"
       },
       "original": {
@@ -1043,11 +1043,11 @@
         "tinted-theming": "tinted-theming"
       },
       "locked": {
-        "lastModified": 1793912335,
-        "narHash": "sha256-5lGEpZe70oYMHpXikoqyWQVYZoiW+DK7ZQZLqeeU2b4=",
+        "lastModified": 1794038635,
+        "narHash": "sha256-MwAKAYBWNII5tmBXq42lz5ziWWj2+oDk6rnjcytEmv4=",
         "owner": "ojuny-project",
         "repo": "nix-settings-gui",
-        "rev": "b3a1600d9c6f462aa280f522f6b88341a0afd031",
+        "rev": "90c24db8dfed75664c96a6dcb1feecd3077ec4e1",
         "type": "github"
       },
       "original": {
@@ -1065,11 +1065,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793912336,
-        "narHash": "sha256-A4qrMfebIx7w1QNxE6Tc2Hw8ikhnfv8bEKeG/NC3QSQ=",
+        "lastModified": 1794038637,
+        "narHash": "sha256-dwzTWBImzcEdgDiqXYpvLtH/IQlZDX/CrR8+ZGvbZLQ=",
         "owner": "ojuny-project",
         "repo": "nix-shell-gui",
-        "rev": "2f4a1b6ea8037b7a0501935856bc0c207757330d",
+        "rev": "63c7c5a84751b3179ccf6255e2d216a7dd693947",
         "type": "github"
       },
       "original": {
@@ -1288,11 +1288,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793912327,
-        "narHash": "sha256-Ar8IDLDTgWWQXd0HYSYMaRE5FAR0pWKJEZuJwFziCTQ=",
+        "lastModified": 1794038644,
+        "narHash": "sha256-pxKelvCutttYef+OeRx84VVlvC63/OiO4jnQy0uELk0=",
         "owner": "ojuny-project",
         "repo": "ojuny-cli",
-        "rev": "f67c6ad4bfd00d83974f0f39d7cc6b1c4ee2faf8",
+        "rev": "6512d3113963812f70ae086c6767403d1831b0b6",
         "type": "github"
       },
       "original": {
@@ -1326,11 +1326,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793862660,
-        "narHash": "sha256-SmkmnRprIlRpWYU/9bdjSX27RD9L7sq/CtjhlbMcGV4=",
+        "lastModified": 1794038642,
+        "narHash": "sha256-TQB+ZS6ECFOA6fpuhJohKH3JQeIWAjGYql5+wiOIxJ0=",
         "owner": "ojuny-project",
         "repo": "ojuny-desktop",
-        "rev": "d772d01c83eef4304b8762df274644d751d864f9",
+        "rev": "f67cff464f7a089d73c2813afd515d3b3b189a6c",
         "type": "github"
       },
       "original": {
@@ -1347,11 +1347,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793912328,
-        "narHash": "sha256-Y7Qtk5kKkz/xqjqc6J3LwfEp25HFrXhr3VzpPZawR70=",
+        "lastModified": 1794038640,
+        "narHash": "sha256-8jLyd01LuO14yNzm3husEtC9Uje5tMy5dxHfpgJz/NY=",
         "owner": "ojuny-project",
         "repo": "ojuny-manual",
-        "rev": "b34f25298c9fd5a9d9106fda824b5c14cba6a263",
+        "rev": "eacab4ee3a308acf37b422c2a804ef9b46a7b42a",
         "type": "github"
       },
       "original": {
@@ -1388,11 +1388,11 @@
         "stylix": "stylix"
       },
       "locked": {
-        "lastModified": 1793955966,
-        "narHash": "sha256-7epByHTZ6ecLJJl4fUJybKMhmwb6n7wSjnc3a1qtFIo=",
+        "lastModified": 1794038660,
+        "narHash": "sha256-/S3BosiTNyh9L2HleE2CoFWK1/MS3bDOkM+qCjuIaYE=",
         "owner": "ojuny-project",
         "repo": "ojuny-template",
-        "rev": "46cbf1e9dd74b0e15b9ef44fa26b3df8394232fe",
+        "rev": "32eae358f3107c443fc78c3682cb63e5e2a3d920",
         "type": "github"
       },
       "original": {
@@ -1504,11 +1504,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793912338,
-        "narHash": "sha256-2DTRUJf+6q1SJ6xmSGV2tJYca5bsz7gwQKMFVfRt+EM=",
+        "lastModified": 1794038634,
+        "narHash": "sha256-2P7+kuxObfusDQYE0KYpf4cEI1RuWl8IcA6VHEHrGQo=",
         "owner": "ojuny-project",
         "repo": "simple-nix-update-gui",
-        "rev": "192b3cab473c0a93a9b84e527fb4b6cade9edfbb",
+        "rev": "9593a1451135914758d076efe391cfaec68cb5fd",
         "type": "github"
       },
       "original": {

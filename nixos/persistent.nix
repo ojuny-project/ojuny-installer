@@ -40,7 +40,7 @@ in
   ojuny.patch.impermanence.enable = lib.mkForce true;
 
   networking.hostName = lib.mkForce "ojuny";
-  system.stateVersion = lib.mkForce "25.05";
+  system.stateVersion = lib.mkForce "26.11";
 
   services.displayManager.autoLogin = {
     enable = true;

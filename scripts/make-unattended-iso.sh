@@ -21,7 +21,7 @@ encryption_passphrase=""
 confirm_seconds="10"
 final_action="reboot"
 clone_relative="repos/nix-flake"
-state_version="25.05"
+state_version="26.11"
 output_dir="$PWD/result-unattended"
 dry_run=0
 offline=0
@@ -63,7 +63,7 @@ Options:
   --confirm-seconds N   Countdown before wiping (default: 10)
   --final-action ACTION reboot or poweroff (default: reboot)
   --clone-relative PATH Path under the home directory (default: repos/nix-flake)
-  --state-version VER   stateVersion for bundled mode (default: 25.05)
+  --state-version VER   stateVersion for bundled mode (default: 26.11)
   --output DIR          Copy the ISO here (default: ./result-unattended)
   --interactive         Show the interactive menu even when flags are given
   --online              Build the online ISO

@@ -6,6 +6,7 @@ import shlex
 import shutil
 import subprocess
 import tempfile
+import time
 from urllib.parse import quote, urlparse
 
 import libcalamares
@@ -17,9 +18,54 @@ def pretty_name():
 
 status = pretty_name()
 
+INSTALL_LOG = "/tmp/ojuny-install.log"
+START_TIME = time.monotonic()
+TARGET_ROOT = None
+TARGET_USER = None
+LOG_SAVED = False
+
 
 def pretty_status_message():
     return status
+
+
+def append_log(message):
+    elapsed = time.monotonic() - START_TIME
+    stamp = time.strftime("%Y-%m-%dT%H:%M:%S")
+    try:
+        with open(INSTALL_LOG, "a") as handle:
+            handle.write("{stamp} +{elapsed:.3f}s {message}\n".format(
+                stamp=stamp, elapsed=elapsed, message=message
+            ))
+    except OSError:
+        pass
+
+
+def phase(message):
+    append_log("PHASE " + message)
+    libcalamares.utils.debug("Ojuny: " + message)
+
+
+def save_install_log():
+    global LOG_SAVED
+    if LOG_SAVED or not TARGET_ROOT or not TARGET_USER:
+        return
+    home = os.path.join(TARGET_ROOT, "home", TARGET_USER)
+    if not os.path.isdir(home):
+        return
+    target = os.path.join(home, "ojuny-install.log")
+    try:
+        if os.path.exists("/var/log/calamares.log"):
+            with open("/var/log/calamares.log") as source, open(INSTALL_LOG, "a") as dest:
+                dest.write("\n## Calamares log\n")
+                shutil.copyfileobj(source, dest)
+        run_command([cmd("pkexec"), cmd("install"), "-m", "0644", INSTALL_LOG, target])
+        run_command([cmd("pkexec"), cmd("chown"), "1000:100", target])
+        LOG_SAVED = True
+    except Exception as error:
+        libcalamares.utils.warning(
+            "could not save the install log to {}: {}".format(target, error)
+        )
 
 
 def run_command(cmd, input=None):
@@ -974,8 +1020,18 @@ def restore_offline_inputs(rewrite):
 
 
 def install():
+    global TARGET_ROOT, TARGET_USER, START_TIME, LOG_SAVED
     global_storage = libcalamares.globalstorage
     job_configuration = libcalamares.job.configuration
+
+    START_TIME = time.monotonic()
+    LOG_SAVED = False
+    try:
+        open(INSTALL_LOG, "w").close()
+    except OSError:
+        pass
+    append_log("Ojuny installer")
+    append_log("started={}".format(time.strftime("%Y-%m-%d %H:%M:%S")))
 
     root = global_storage.value("rootMountPoint")
     if not root or not os.path.isdir(root):
@@ -1032,6 +1088,12 @@ def install():
     if not re.fullmatch(r"[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?", hostname):
         raise RuntimeError("invalid hostname: {hostname}".format(hostname=hostname))
 
+    TARGET_ROOT = root
+    TARGET_USER = username
+    append_log("root={}".format(root))
+    append_log("username={}".format(username))
+    append_log("hostname={}".format(hostname))
+
     clone_relative = job_configuration.get("cloneRelativePath", "repos/nix-flake")
     home = os.path.join(root, "home", username)
     clone = os.path.join(home, clone_relative)
@@ -1050,6 +1112,10 @@ def install():
     version = state_version()
 
     mode = global_storage.value("ojuny_template_mode") or "bundled"
+    append_log("mode={}".format(mode))
+    append_log("state_version={}".format(version))
+    append_log("offline={}".format(os.path.exists("/etc/ojuny/offline")))
+    append_log("discovery={}".format(os.path.exists("/etc/ojuny/discovery")))
     template_url = (global_storage.value("ojuny_template_url") or "").strip()
     template_token = (global_storage.value("ojuny_template_token") or "").strip()
     template_branch = (global_storage.value("ojuny_template_branch") or "").strip()
@@ -1073,15 +1139,15 @@ def install():
     partitions = global_storage.value("partitions") or []
 
     libcalamares.job.setprogress(0.02)
-    libcalamares.utils.debug("Ojuny: preparing boot configuration")
+    phase("preparing boot configuration")
     extra_lines = extra_boot_lines(root, partitions, firmware)
     extra_file = write_extra_file(extra_lines) if extra_lines else None
-    libcalamares.utils.debug("Ojuny: creating target home")
+    phase("creating target home")
     run_command([cmd("pkexec"), cmd("install"), "-d", "-m", "0755", home])
     if os.path.exists(clone):
         run_command([cmd("pkexec"), cmd("rm"), "-rf", clone])
 
-    libcalamares.utils.debug("Ojuny: preparing template and hardware")
+    phase("preparing template and hardware")
     if mode == "prepared":
         if not template_url:
             raise RuntimeError("a prepared template repository URL is required")
@@ -1214,10 +1280,11 @@ def install():
 
     if os.path.exists("/etc/ojuny/offline"):
         libcalamares.job.setprogress(0.30)
+        phase("preloading offline store")
         preload_store_paths(root)
 
     libcalamares.job.setprogress(0.32)
-    libcalamares.utils.debug("Ojuny: starting nixos-install")
+    phase("starting nixos-install")
     run_command([cmd("pkexec"), cmd("chmod"), "755", root])
     command = [cmd("pkexec")] + proxy_env() + [
         cmd("nixos-install"),
@@ -1256,10 +1323,12 @@ def install():
             if text:
                 output.append(text)
                 libcalamares.utils.debug("nixos-install: {}".format(text))
+                append_log("nixos-install: {}".format(text))
 
         for log_line in progress.log_messages:
             output.append(log_line)
             libcalamares.utils.debug("nixos-install: {}".format(log_line))
+            append_log("nixos-install: {}".format(log_line))
         progress.log_messages.clear()
 
         if len(output) > 400:
@@ -1274,10 +1343,10 @@ def install():
     if exit_code != 0:
         raise RuntimeError("nixos-install failed:\n{}".format("\n".join(output)))
 
-    libcalamares.utils.debug("Ojuny: nixos-install finished")
+    phase("nixos-install finished")
 
     libcalamares.job.setprogress(0.98)
-    libcalamares.utils.debug("Ojuny: copying generated configuration")
+    phase("copying generated configuration")
     repos_dir = os.path.dirname(clone)
     run_command([cmd("pkexec"), cmd("rm"), "-rf", clone])
     run_command([cmd("pkexec"), cmd("install"), "-d", "-m", "0755", repos_dir])
@@ -1286,7 +1355,7 @@ def install():
     run_command([cmd("pkexec"), cmd("rm"), "-rf", staging])
 
     libcalamares.job.setprogress(0.99)
-    libcalamares.utils.debug("Ojuny: setting up git")
+    phase("setting up git")
 
     credential_path = os.path.join(root, "home", username, ".git-credentials")
     try:
@@ -1324,11 +1393,14 @@ def install():
     # home-manager activation runs as root during nixos-install and creates
     # ~/.config entries owned by root. Hand the whole home tree back to the
     # user so the desktop session can write its own configuration.
-    libcalamares.utils.debug("Ojuny: fixing home ownership")
+    phase("fixing home ownership")
     run_command([cmd("pkexec"), cmd("chown"), "-R", "1000:100", home])
 
+    phase("saving install log")
+    save_install_log()
+
     libcalamares.job.setprogress(1.0)
-    libcalamares.utils.debug("Ojuny: installation finished")
+    phase("installation finished")
     return None
 
 
@@ -1337,5 +1409,7 @@ def run():
     try:
         return install()
     except Exception as error:
+        append_log("ERROR: {}".format(error))
         libcalamares.utils.error(str(error))
+        save_install_log()
         return ("Ojuny installation failed", str(error))

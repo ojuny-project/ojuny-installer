@@ -18,10 +18,50 @@ MOUNT = "/mnt"
 MIN_DISK_BYTES = 8 * 1024**3
 OFFLINE = os.path.exists("/etc/ojuny/offline")
 DISCOVERY = os.path.exists("/etc/ojuny/discovery")
+INSTALL_LOG = "/tmp/ojuny-install.log"
+START_TIME = time.monotonic()
+TARGET_USER = None
+TARGET_UID = 1000
+TARGET_GID = 100
+LOG_SAVED = False
 
 
 def log(message):
     print(message, flush=True)
+
+
+def append_log(message):
+    elapsed = time.monotonic() - START_TIME
+    stamp = time.strftime("%Y-%m-%dT%H:%M:%S")
+    try:
+        with open(INSTALL_LOG, "a") as handle:
+            handle.write("{stamp} +{elapsed:.3f}s {message}\n".format(
+                stamp=stamp, elapsed=elapsed, message=message
+            ))
+    except OSError:
+        pass
+
+
+def phase(message):
+    log(message)
+    append_log("PHASE " + message)
+
+
+def save_install_log():
+    global LOG_SAVED
+    if LOG_SAVED or not TARGET_USER:
+        return
+    home = os.path.join(MOUNT, "home", TARGET_USER)
+    if not os.path.isdir(home):
+        return
+    target = os.path.join(home, "ojuny-install.log")
+    try:
+        shutil.copyfile(INSTALL_LOG, target)
+        os.chmod(target, 0o644)
+        os.chown(target, TARGET_UID, TARGET_GID)
+        LOG_SAVED = True
+    except OSError as error:
+        log("warning: could not save the install log to {}: {}".format(target, error))
 
 
 def run(command):
@@ -31,6 +71,23 @@ def run(command):
 
 def output(command):
     return subprocess.check_output(command, text=True).strip()
+
+
+def run_logged(command):
+    log("+ " + " ".join(str(part) for part in command))
+    process = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+    )
+    for line in process.stdout:
+        print(line, end="", flush=True)
+        append_log(line.rstrip("\n"))
+    code = process.wait()
+    if code != 0:
+        raise subprocess.CalledProcessError(code, command)
 
 
 def nix_string(value):
@@ -354,7 +411,7 @@ def prepare_bundled(target, settings, username, host):
         "--hostname",
         host,
         "--state-version",
-        settings.get("stateVersion") or "25.05",
+        settings.get("stateVersion") or "26.11",
         "--clone-relative",
         settings.get("cloneRelative") or "repos/nix-flake",
         "--force",
@@ -809,6 +866,16 @@ def restore_offline_inputs(rewrite):
 
 
 def install():
+    global START_TIME, LOG_SAVED, TARGET_USER, TARGET_UID, TARGET_GID
+    START_TIME = time.monotonic()
+    LOG_SAVED = False
+    try:
+        open(INSTALL_LOG, "w").close()
+    except OSError:
+        pass
+    append_log("Ojuny unattended installer")
+    append_log("started={}".format(time.strftime("%Y-%m-%d %H:%M:%S")))
+
     settings = read_settings()
     disk = resolve_disk(settings)
     firmware = resolve_firmware(settings)
@@ -816,12 +883,18 @@ def install():
     settings["firmware"] = firmware
     mode = settings["mode"]
     clone_relative = settings.get("cloneRelative") or "repos/nix-flake"
+    append_log("mode={}".format(mode))
+    append_log("disk={}".format(disk))
+    append_log("firmware={}".format(firmware))
+    append_log("offline={}".format(OFFLINE))
+    append_log("discovery={}".format(DISCOVERY))
 
     validate_disk(disk)
     confirm(disk, settings.get("confirmSeconds", 10))
     if not OFFLINE:
         wait_for_network()
 
+    phase("partitioning and mounting")
     disk_config = write_runtime_disk_config(disk)
     run(
         [
@@ -833,6 +906,7 @@ def install():
             disk_config,
         ]
     )
+    phase("disk layout ready")
 
     source_user = detect_username(FLAKE_SOURCE)
 
@@ -853,8 +927,11 @@ def install():
 
     target = os.path.join(MOUNT, "home", username, clone_relative)
     runtime_flake = os.path.join("/home", username, clone_relative)
+    TARGET_USER = username
+    append_log("username={}".format(username))
+    append_log("hostname={}".format(host))
 
-    log("installing flake to {}".format(runtime_flake))
+    phase("preparing target flake")
 
     if mode == "bundled":
         if os.path.exists(target):
@@ -886,16 +963,19 @@ def install():
 
     if not host:
         raise RuntimeError("could not determine the target host")
+    append_log("hostname={}".format(host))
 
+    phase("applying settings and hardware")
     apply_settings(target, settings, username, host, runtime_flake)
     regenerate_hardware(target, firmware, disk)
     write_hardware(target, settings)
     git_init(target)
 
     if OFFLINE:
+        phase("preloading offline store")
         preload_store_paths(MOUNT)
 
-    log("installing NixOS from {}#{}".format(target, host))
+    phase("installing NixOS from {}#{}".format(target, host))
     install_command = [
         "nixos-install",
         "--no-root-passwd",
@@ -911,19 +991,26 @@ def install():
         install_command += ["--option", "substituters", "auto?trusted=1"]
     offline_rewrite = rewrite_offline_inputs(target) if OFFLINE else None
     try:
-        run(install_command)
+        run_logged(install_command)
     finally:
         restore_offline_inputs(offline_rewrite)
+    phase("nixos-install finished")
 
     shell = detect_shell(target)
     home = os.path.join(MOUNT, "home", username)
     write_gui_config(home, runtime_flake, host, shell)
 
     uid, gid = lookup_ids(username)
+    TARGET_UID = uid
+    TARGET_GID = gid
     chown_tree(home, uid, gid)
+
+    phase("saving install log")
+    save_install_log()
 
     unmount()
 
+    phase("installation finished")
     log("install complete")
     log("configuration: {}".format(runtime_flake))
     log("rebooting" if settings.get("finalAction") == "reboot" else "powering off")
@@ -947,8 +1034,11 @@ def main():
     log("Ojuny unattended installation starting")
     try:
         install()
-    except Exception:
+    except Exception as error:
+        append_log("ERROR: {}".format(error))
+        append_log(traceback.format_exc())
         traceback.print_exc()
+        save_install_log()
         log("installation failed, starting a shell on tty1")
         failure_shell()
 
