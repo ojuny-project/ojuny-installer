@@ -44,6 +44,8 @@ in
     ./live-media-eject.nix
 
     inputs.ojuny-template.modules.nixos.system-graphics
+    inputs.ojuny-template.modules.nixos.system-facter
+    inputs.ojuny-template.modules.nixos.system-hardware-profile
     inputs.ojuny-template.modules.nixos.system-accessibility
     inputs.ojuny-template.modules.nixos.applications-browser
     inputs.ojuny-template.modules.nixos.desktop-mango
