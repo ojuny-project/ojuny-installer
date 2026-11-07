@@ -133,12 +133,26 @@
             inherit calamares;
             extensions = ojuny-calamares-extensions;
           };
+
+          install-report = pkgs.python3Packages.buildPythonApplication {
+            pname = "ojuny-install-report";
+            version = "0.1.0";
+            pyproject = true;
+            src = ./packages/install-report;
+            build-system = [ pkgs.python3Packages.setuptools ];
+            preCheck = ''
+              export PYTHONPATH="$PWD/src"
+            '';
+            checkPhase = ''
+              python -m unittest discover -s tests -v
+            '';
+          };
         in
         {
           formatter = pkgs.nixfmt;
 
           packages = {
-            inherit ojuny-calamares-extensions calamares-ojuny;
+            inherit ojuny-calamares-extensions calamares-ojuny install-report;
 
             ojuny-iso = iso.config.system.build.isoImage;
             ojuny-iso-discovery = discoveryIso.config.system.build.isoImage;
@@ -200,6 +214,11 @@
             }/bin/ci";
           };
 
+          apps.install-report = {
+            type = "app";
+            program = "${install-report}/bin/install-report";
+          };
+
           devShells.default = pkgs.mkShell {
             packages = with pkgs; [
               cpio
@@ -228,6 +247,26 @@
           };
 
           checks = {
+            inherit install-report;
+
+            collect-install-report = pkgs.runCommand "check-collect-install-report" {
+              nativeBuildInputs = [ pkgs.python3 ];
+            } ''
+              cd ${./.}
+              python3 -m unittest scripts.tests.test_collect_install_report -v
+              touch $out
+            '';
+
+            default = pkgs.runCommand "check-default" { } ''
+              echo ${self.checks.${system}.format} >/dev/null
+              echo ${self.checks.${system}.extensions} >/dev/null
+              echo ${self.checks.${system}.module} >/dev/null
+              echo ${self.checks.${system}.unattended} >/dev/null
+              echo ${self.checks.${system}.offline-install-closure} >/dev/null
+              echo ${self.checks.${system}.install-report} >/dev/null
+              touch $out
+            '';
+
             format = pkgs.runCommand "check-format" { nativeBuildInputs = [ pkgs.nixfmt ]; } ''
               cd ${./.}
               nixfmt --check flake.nix $(find packages nixos unattended -name '*.nix')

@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "generated_at": "2026-11-07T12:50:45Z",
+  "iso": {
+    "variant": "offline",
+    "toplevel": "/nix/store/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-nixos-system-ojuny-26.11",
+    "closure_hash": "sha256-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "template": {
+    "source": "https://github.com/example/ojuny-template",
+    "revision": "0123456789abcdef0123456789abcdef01234567"
+  },
+  "environment": {
+    "cpu": {
+      "model": "AMD Ryzen 3 3200U",
+      "cores": 2,
+      "threads": 4
+    },
+    "ram": {
+      "total_bytes": 25769803776
+    },
+    "network": {
+      "interface": "wlan0",
+      "type": "wifi",
+      "link_speed_mbps": 433,
+      "peak_rx_bytes_per_second": 6250000
+    },
+    "usb": {
+      "model": "JMicron USB NVMe",
+      "link_type": "usb3"
+    },
+    "storage": {
+      "model": "Samsung NVMe",
+      "link_type": "nvme"
+    },
+    "kernel": {
+      "release": "6.12.0",
+      "firmware": "unknown"
+    },
+    "vm": null
+  },
+  "phases": {
+    "partitioning and mounting": 1.0,
+    "disk layout ready": 4.0,
+    "preparing target flake": 5.0,
+    "applying settings and hardware": 10.0,
+    "preloading offline store": 10.0,
+    "installing NixOS from /etc/ojuny/flake#fixture": 600.0,
+    "nixos-install finished": 2400.0,
+    "saving install log": 10.0,
+    "installation finished": 5.0
+  }
+}

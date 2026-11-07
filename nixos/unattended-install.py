@@ -10,6 +10,7 @@ import subprocess
 import sys
 import time
 import traceback
+from pathlib import Path
 
 SETTINGS_PATH = "/etc/ojuny/settings.json"
 FLAKE_SOURCE = "/etc/ojuny/flake"
@@ -47,6 +48,20 @@ def phase(message):
     append_log("PHASE " + message)
 
 
+def write_install_report():
+    try:
+        import collect_install_report
+    except ImportError:
+        return
+    try:
+        variant = "offline" if OFFLINE else "discovery" if DISCOVERY else "online"
+        report = collect_install_report.collect(Path("/"), FLAKE_SOURCE, variant)
+        with open("/tmp/ojuny-install-report.json", "w") as handle:
+            json.dump(report, handle, indent=2)
+    except Exception as error:
+        log("warning: could not collect the install report: {}".format(error))
+
+
 def save_install_log():
     global LOG_SAVED
     if LOG_SAVED or not TARGET_USER:
@@ -59,6 +74,12 @@ def save_install_log():
         shutil.copyfile(INSTALL_LOG, target)
         os.chmod(target, 0o644)
         os.chown(target, TARGET_UID, TARGET_GID)
+        report = "/tmp/ojuny-install-report.json"
+        if os.path.exists(report):
+            target_report = os.path.join(home, "install-report.json")
+            shutil.copyfile(report, target_report)
+            os.chmod(target_report, 0o644)
+            os.chown(target_report, TARGET_UID, TARGET_GID)
         LOG_SAVED = True
     except OSError as error:
         log("warning: could not save the install log to {}: {}".format(target, error))
@@ -1004,6 +1025,9 @@ def install():
     TARGET_UID = uid
     TARGET_GID = gid
     chown_tree(home, uid, gid)
+
+    phase("collecting install report")
+    write_install_report()
 
     phase("saving install log")
     save_install_log()

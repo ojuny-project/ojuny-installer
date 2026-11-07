@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ojuny-install-report"
+version = "0.1.0"
+description = "Turn Ojuny install logs into a result"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+install-report = "ojuny_install_report.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

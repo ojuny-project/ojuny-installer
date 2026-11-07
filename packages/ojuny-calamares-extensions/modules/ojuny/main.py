@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import tempfile
 import time
+from pathlib import Path
 from urllib.parse import quote, urlparse
 
 import libcalamares
@@ -22,6 +23,7 @@ INSTALL_LOG = "/tmp/ojuny-install.log"
 START_TIME = time.monotonic()
 TARGET_ROOT = None
 TARGET_USER = None
+TEMPLATE_PATH = None
 LOG_SAVED = False
 
 
@@ -46,6 +48,21 @@ def phase(message):
     libcalamares.utils.debug("Ojuny: " + message)
 
 
+def write_install_report():
+    try:
+        import collect_install_report
+    except ImportError:
+        return
+    try:
+        report = collect_install_report.collect(Path("/"), TEMPLATE_PATH, "calamares")
+        with open("/tmp/ojuny-install-report.json", "w") as handle:
+            json.dump(report, handle, indent=2)
+    except Exception as error:
+        libcalamares.utils.warning(
+            "could not collect the install report: {}".format(error)
+        )
+
+
 def save_install_log():
     global LOG_SAVED
     if LOG_SAVED or not TARGET_ROOT or not TARGET_USER:
@@ -61,6 +78,11 @@ def save_install_log():
                 shutil.copyfileobj(source, dest)
         run_command([cmd("pkexec"), cmd("install"), "-m", "0644", INSTALL_LOG, target])
         run_command([cmd("pkexec"), cmd("chown"), "1000:100", target])
+        report = "/tmp/ojuny-install-report.json"
+        if os.path.exists(report):
+            target_report = os.path.join(home, "install-report.json")
+            run_command([cmd("pkexec"), cmd("install"), "-m", "0644", report, target_report])
+            run_command([cmd("pkexec"), cmd("chown"), "1000:100", target_report])
         LOG_SAVED = True
     except Exception as error:
         libcalamares.utils.warning(
@@ -499,6 +521,8 @@ def configure_template(
     device,
     extra_lines,
 ):
+    global TEMPLATE_PATH
+    TEMPLATE_PATH = clone
     global_storage = libcalamares.globalstorage
     configuration_path = os.path.join(clone, "modules/07-system/01-configuration.nix")
 
@@ -1395,6 +1419,9 @@ def install():
     # user so the desktop session can write its own configuration.
     phase("fixing home ownership")
     run_command([cmd("pkexec"), cmd("chown"), "-R", "1000:100", home])
+
+    phase("collecting install report")
+    write_install_report()
 
     phase("saving install log")
     save_install_log()

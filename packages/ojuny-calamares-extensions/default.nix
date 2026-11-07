@@ -38,6 +38,7 @@ stdenvNoCC.mkDerivation {
     cp -r branding/ojuny $out/share/calamares/branding/ojuny
     mkdir -p $out/lib/calamares/modules/ojuny
     cp modules/ojuny/* $out/lib/calamares/modules/ojuny/
+    cp ${../../scripts/collect_install_report.py} $out/lib/calamares/modules/ojuny/collect_install_report.py
 
     substituteInPlace $out/etc/calamares/settings.conf \
       --replace-fail '@out@' "$out"

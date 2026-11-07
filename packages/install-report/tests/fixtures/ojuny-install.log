@@ -1,0 +1,10 @@
+2026-11-07T12:00:00 +0.000s installer start
+2026-11-07T12:00:01 +1.000s PHASE partitioning and mounting
+2026-11-07T12:00:05 +5.000s PHASE disk layout ready
+2026-11-07T12:00:10 +10.000s PHASE preparing target flake
+2026-11-07T12:00:20 +20.000s PHASE applying settings and hardware
+2026-11-07T12:00:30 +30.000s PHASE preloading offline store
+2026-11-07T12:10:30 +630.000s PHASE installing NixOS from /etc/ojuny/flake#fixture
+2026-11-07T12:50:30 +3030.000s PHASE nixos-install finished
+2026-11-07T12:50:40 +3040.000s PHASE saving install log
+2026-11-07T12:50:45 +3045.000s PHASE installation finished
