@@ -187,6 +187,19 @@
             }/bin/make-persistent-image";
           };
 
+          apps.ci = {
+            type = "app";
+            program = "${
+              pkgs.writeShellApplication {
+                name = "ci";
+                runtimeInputs = [ pkgs.nix ];
+                text = ''
+                  exec nix flake check "$@"
+                '';
+              }
+            }/bin/ci";
+          };
+
           devShells.default = pkgs.mkShell {
             packages = with pkgs; [
               cpio
@@ -333,6 +346,10 @@
                 '';
           };
         };
+
+      flake = {
+        hydraJobs = self.checks;
+      };
 
       flake.nixosConfigurations.ojuny-iso = iso;
       flake.nixosConfigurations.ojuny-iso-discovery = discoveryIso;
