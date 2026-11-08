@@ -20,7 +20,10 @@ let
       lib.filter (patch: !(lib.hasInfix "dont-allow-manual-luks" (toString patch))) (
         previous.patches or [ ]
       )
-      ++ [ ../packages/calamares-compact-locale.patch ];
+      ++ [
+        ../packages/calamares-compact-locale.patch
+        ../packages/calamares-partition-note.patch
+      ];
   });
 
   calamares = pkgs.callPackage ../packages/calamares-ojuny.nix {

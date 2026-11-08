@@ -26,6 +26,10 @@ TARGET_USER = None
 TEMPLATE_PATH = None
 LOG_SAVED = False
 
+ESP_PARTTYPE = "c12a7328-f81f-11d2-ba4b-00a0c93ec93b"
+XBOOTLDR_PARTTYPE = "bc13c2ff-59e6-4262-a352-b275fd6f7172"
+MULTIBOOT_PAGE = "modules/07-system/12-multiboot.nix"
+
 
 def pretty_status_message():
     return status
@@ -378,6 +382,96 @@ def read_kernel_latest():
         return False
 
 
+def partition_type(device):
+    if not device:
+        return ""
+    try:
+        return run_command_output([cmd("lsblk"), "-no", "PARTTYPE", device]).strip()
+    except Exception:
+        return ""
+
+
+def boot_mount_lines(partitions):
+    mounts = {
+        part.get("mountPoint"): part
+        for part in partitions
+        if part.get("mountPoint")
+    }
+    if mounts.get("/efi") is None or mounts.get("/boot") is None:
+        return []
+    if partition_type(mounts["/boot"].get("device")) != XBOOTLDR_PARTTYPE:
+        return []
+    return [
+        'boot.loader.efi.efiSysMountPoint = "/efi";',
+        'boot.loader.systemd-boot.xbootldrMountPoint = "/boot";',
+    ]
+
+
+def multiboot_needed(partitions):
+    claimed = set()
+    for part in partitions:
+        device = part.get("device")
+        if not device:
+            continue
+        if part.get("mountPoint") in ("/boot", "/boot/efi", "/efi"):
+            claimed.add(os.path.realpath(device))
+            continue
+        if part.get("claimed") is True and part.get("fsName") in (
+            "fat16",
+            "fat32",
+            "vfat",
+        ):
+            claimed.add(os.path.realpath(device))
+
+    try:
+        report = json.loads(
+            run_command_output(
+                [cmd("lsblk"), "-J", "-o", "PATH,TYPE,RM,TRAN,PARTTYPE,MOUNTPOINT"]
+            )
+        )
+    except Exception:
+        return False
+
+    for disk in report.get("blockdevices", []):
+        if disk.get("type") != "disk":
+            continue
+        if disk.get("rm"):
+            continue
+        if disk.get("tran") == "usb":
+            continue
+        for child in disk.get("children") or []:
+            if child.get("parttype") != ESP_PARTTYPE:
+                continue
+            child_path = os.path.realpath(child.get("path") or "")
+            if child_path in claimed:
+                continue
+            return True
+    return False
+
+
+def enable_multiboot(clone):
+    path = os.path.join(clone, MULTIBOOT_PAGE)
+    if not os.path.exists(path):
+        libcalamares.utils.warning(
+            "multiboot page is missing; detected other systems stay unregistered"
+        )
+        return False
+    with open(path) as handle:
+        text = handle.read()
+    if re.search(r"ojuny\.multiboot\.enable\s*=\s*true;", text):
+        return True
+    updated = replace_once(
+        text,
+        r"ojuny\.multiboot\.enable\s*=\s*false;",
+        "ojuny.multiboot.enable = true;",
+        "multiboot enable",
+    )
+    if updated == text:
+        return False
+    write_file(path, updated)
+    return True
+
+
 def extra_boot_lines(root, partitions, firmware):
     lines = []
     if read_kernel_latest():
@@ -490,6 +584,9 @@ def extra_boot_lines(root, partitions, firmware):
                     ],
                     input=passphrase,
                 )
+
+    if firmware == "efi":
+        lines += boot_mount_lines(partitions)
 
     return lines
 
@@ -1298,6 +1395,13 @@ def install():
             )
             sanitize_hardware_module(staging)
             generate_facter(staging)
+
+    multiboot = multiboot_needed(partitions)
+    append_log(
+        "multiboot helper: {}".format("enabled" if multiboot else "not needed")
+    )
+    if multiboot and not enable_multiboot(staging):
+        append_log("multiboot helper could not be enabled in the staged template")
 
     if extra_file:
         os.unlink(extra_file)

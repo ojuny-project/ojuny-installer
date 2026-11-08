@@ -1,0 +1,28 @@
+--- a/src/modules/partition/gui/ChoicePage.ui
++++ b/src/modules/partition/gui/ChoicePage.ui
+@@ -36,7 +36,7 @@
+     </layout>
+    </item>
+    <item>
+-    <layout class="QVBoxLayout" name="m_rightLayout" stretch="0,1,0,0,0,0,0">
++    <layout class="QVBoxLayout" name="m_rightLayout" stretch="0,0,1,0,0,0,0,0">
+      <item>
+       <widget class="QLabel" name="m_messageLabel">
+        <property name="toolTip">
+@@ -47,6 +47,16 @@
+        </property>
+       </widget>
+      </item>
++     <item>
++      <widget class="QLabel" name="m_ojunyPartitionNote">
++       <property name="text">
++        <string>If Windows is installed, shrink its partition in Windows Disk Management and export the BitLocker recovery key first. Ojuny can shrink XFS, EXT4, BTRFS, f2fs and vfat, but not NTFS.</string>
++       </property>
++       <property name="wordWrap">
++        <bool>true</bool>
++       </property>
++      </widget>
++     </item>
+      <item>
+       <widget class="QScrollArea" name="m_itemsScrollArea">
+        <property name="frameShape">

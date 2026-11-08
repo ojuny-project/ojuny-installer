@@ -80,6 +80,13 @@ existing `00-host.nix` when the template ships one.
 
 - `x86_64-linux` only. UEFI uses systemd-boot; BIOS uses GRUB with a generated keyfile for encrypted boot.
 - The unattended ISO wipes the configured disk and does not configure Wi-Fi.
+- The attended installer can shrink XFS, EXT4, BTRFS, f2fs and vfat partitions,
+  and install alongside an existing system. It does not resize NTFS; shrink the
+  Windows partition in Windows Disk Management first and export the BitLocker
+  recovery key.
+- The attended installer enables the optional rEFInd "Other systems" helper
+  when another internal ESP or operating system would not be visible to
+  systemd-boot.
 - Offline images cover the default full system; unusual hardware, out-of-tree drivers and optional patches still need network.
 - Ten prebuilt applications dominate build time.
 

@@ -126,7 +126,10 @@
               lib.filter (patch: !(lib.hasInfix "dont-allow-manual-luks" (toString patch))) (
                 previous.patches or [ ]
               )
-              ++ [ ./packages/calamares-compact-locale.patch ];
+              ++ [
+                ./packages/calamares-compact-locale.patch
+                ./packages/calamares-partition-note.patch
+              ];
           });
 
           calamares-ojuny = pkgs.callPackage ./packages/calamares-ojuny.nix {
@@ -287,6 +290,7 @@
                   grep -q 'notesqml@origin' ${ojuny-calamares-extensions}/etc/calamares/settings.conf
                   test -f ${ojuny-calamares-extensions}/share/calamares/branding/ojuny/template.qml
                   test -f ${ojuny-calamares-extensions}/share/calamares/branding/ojuny/origin.qml
+                  test -f ${./packages/calamares-partition-note.patch}
                   yq -e '.requirements.requiredStorage == 30' ${ojuny-calamares-extensions}/etc/calamares/modules/welcome.conf
                   yq -e '.requirements.required | contains(["storage"]) | not' ${ojuny-calamares-extensions}/etc/calamares/modules/welcome.conf
                   yq -e '.mkpasswd | length > 0' ${ojuny-calamares-extensions}/etc/calamares/modules/ojuny.conf
