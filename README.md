@@ -86,9 +86,9 @@ existing `00-host.nix` when the template ships one.
   recovery key.
 - Windows must be installed first; Windows recreates the ESP and removes a
   Linux bootloader installed before it. The 200 MiB Windows ESP is not resized.
-  The installer creates a 1 GiB ojuny ESP in the free space and leaves the
-  Windows ESP unassigned. systemd-boot, rEFInd, the kernels, the initrds and the
-  recovery UKI live on the ojuny ESP.
+  The installer creates a 4 GiB ojuny ESP in the replaced partition and leaves
+  the Windows ESP unassigned. systemd-boot, rEFInd, the kernels, the initrds and
+  the recovery UKI live on the ojuny ESP.
 - On UEFI, the installer restores the firmware boot order it captured before
   `nixos-install`, then inserts `Linux Boot Manager` above the first internal
   entry. This cancels the one-time move to the top done by `bootctl install`, so

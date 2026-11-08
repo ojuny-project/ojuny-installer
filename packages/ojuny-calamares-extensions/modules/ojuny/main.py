@@ -1146,10 +1146,10 @@ def reject_reused_windows_esp(root):
         if os.path.exists(marker):
             raise RuntimeError(
                 "The install is using the Windows EFI system partition as the Ojuny "
-                "boot partition. Create a separate 1 GiB Ojuny ESP in the free space "
-                "and leave the Windows ESP, Microsoft reserved partition and recovery "
-                "partition unassigned. This keeps the Ojuny bootloader and recovery "
-                "entry independent of Windows updates."
+                "boot partition. Create a separate 4 GiB Ojuny ESP in the replaced "
+                "partition or free space and leave the Windows ESP, Microsoft reserved "
+                "partition and recovery partition unassigned. This keeps the Ojuny "
+                "bootloader and recovery entry independent of Windows updates."
             )
 
 

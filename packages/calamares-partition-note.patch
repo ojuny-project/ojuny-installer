@@ -16,7 +16,7 @@
 +     <item>
 +      <widget class="QLabel" name="m_ojunyPartitionNote">
 +       <property name="text">
-+        <string>If Windows is installed, a separate 1 GiB Ojuny ESP will be created in the free space. Leave the 200 MiB Windows ESP, Microsoft reserved partition and recovery partition unassigned. Shrink Windows in Windows Disk Management and export the BitLocker recovery key first. Ojuny can shrink XFS, EXT4, BTRFS, f2fs and vfat, but not NTFS.</string>
++        <string>If Windows is installed, a separate 4 GiB Ojuny ESP will be created in the replaced partition. Leave the 200 MiB Windows ESP, Microsoft reserved partition and recovery partition unassigned. Shrink Windows in Windows Disk Management and export the BitLocker recovery key first. Ojuny can shrink XFS, EXT4, BTRFS, f2fs and vfat, but not NTFS.</string>
 +       </property>
 +       <property name="wordWrap">
 +        <bool>true</bool>

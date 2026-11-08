@@ -153,7 +153,15 @@
                                           m_config->luksFileSystemType(),
                                           m_encryptWidget->passphrase(),
                                           newParent,
-@@ -1219,11 +1309,14 @@
+@@ -897,6 +987,7 @@
+                                                                 m_config->replaceModeFilesystem(),
+                                                                 m_config->luksFileSystemType(),
+                                                                 m_encryptWidget->passphrase() } );
++                        setupEfiSystemPartitionSelector();
+                         Partition* homePartition = findPartitionByPath( { selectedDevice() }, *homePartitionPath );
+ 
+                         if ( homePartition && doReuseHomePartition )
+@@ -1219,11 +1310,14 @@
  {
      Q_ASSERT( m_isEfi );
  
@@ -168,7 +176,7 @@
          m_efiLabel->setText( tr( "An EFI system partition cannot be found anywhere "
                                   "on this system. Please go back and use manual "
                                   "partitioning to set up %1.",
-@@ -1233,6 +1326,7 @@
+@@ -1233,6 +1327,7 @@
      }
      else if ( efiSystemPartitions.count() == 1 )  //probably most usual situation
      {
@@ -176,7 +184,7 @@
          m_efiLabel->setText( tr( "The EFI system partition at %1 will be used for "
                                   "starting %2.",
                                   "@info, %1 is partition path, %2 is product name" )
-@@ -1243,17 +1337,31 @@
+@@ -1243,17 +1338,31 @@
      {
          m_efiComboBox->show();
          m_efiLabel->setText( tr( "EFI system partition:", "@label" ) );
@@ -210,3 +218,60 @@
      }
  }
  
+--- a/src/modules/partition/core/PartitionActions.cpp
++++ b/src/modules/partition/core/PartitionActions.cpp
+@@ -282,11 +282,54 @@
+     firstSector = partition->firstSector();
+     lastSector = partition->lastSector();
+ 
++    PartitionNode* espParent = partition->parent();
++    if ( !espParent )
++    {
++        espParent = dev->partitionTable();
++    }
++
+     if ( !partition->roles().has( PartitionRole::Unallocated ) )
+     {
+         core->deletePartition( dev, partition );
+     }
+ 
++    const QString efiMountPoint
++        = Calamares::JobQueue::instance()->globalStorage()->value( "efiSystemPartition" ).toString();
++    bool hasDedicatedEsp = false;
++    if ( PartUtils::isEfiSystem() && !efiMountPoint.isEmpty() )
++    {
++        for ( Partition* efiPartition : core->efiSystemPartitions() )
++        {
++            if ( PartitionInfo::mountPoint( efiPartition ) == efiMountPoint )
++            {
++                hasDedicatedEsp = true;
++                break;
++            }
++        }
++    }
++
++    if ( PartUtils::isEfiSystem() && !efiMountPoint.isEmpty() && !hasDedicatedEsp )
++    {
++        const qint64 espSectors
++            = ( PartUtils::efiFilesystemRecommendedSize() + dev->logicalSize() - 1 ) / dev->logicalSize();
++        const qint64 espLastSector = firstSector + espSectors - 1;
++        if ( espSectors > 0 && espLastSector < lastSector )
++        {
++            Partition* esp = KPMHelpers::createNewPartition( espParent,
++                                                             *dev,
++                                                             newRoles,
++                                                             FileSystem::Fat32,
++                                                             QStringLiteral( "OJUNY" ),
++                                                             firstSector,
++                                                             espLastSector,
++                                                             KPM_PARTITION_FLAG( None ) );
++            PartitionInfo::setFormat( esp, true );
++            PartitionInfo::setMountPoint( esp, efiMountPoint );
++            core->createPartition( dev, esp, KPM_PARTITION_FLAG_ESP );
++            firstSector = espLastSector + 1;
++        }
++    }
++
+     core->layoutApply( dev, firstSector, lastSector, o.luksFsType, o.luksPassphrase );
+ 
+     core->dumpQueue();

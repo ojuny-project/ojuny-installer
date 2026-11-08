@@ -723,7 +723,7 @@ def write_hardware(root, settings):
               priority = 1;
             }};
             ESP = {{
-              size = "1G";
+              size = "4G";
               type = "EF00";
               priority = 2;
               content = {{

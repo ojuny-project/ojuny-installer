@@ -319,10 +319,13 @@
                   test -f ${./packages/calamares-ojuny-esp.patch}
                   grep -q 'rootFirstSector' ${./packages/calamares-ojuny-esp.patch}
                   grep -q 'KPM_PARTITION_FLAG_ESP' ${./packages/calamares-ojuny-esp.patch}
+                  grep -q 'src/modules/partition/core/PartitionActions.cpp' ${./packages/calamares-ojuny-esp.patch}
+                  grep -q 'espParent' ${./packages/calamares-ojuny-esp.patch}
                   test -f ${./packages/kpmcore-luks2-sector-size.patch}
                   grep -q 'BLKSSZGET' ${./packages/kpmcore-luks2-sector-size.patch}
                   yq -e '.requirements.requiredStorage == 30' ${ojuny-calamares-extensions}/etc/calamares/modules/welcome.conf
                   yq -e '.requirements.required | contains(["storage"]) | not' ${ojuny-calamares-extensions}/etc/calamares/modules/welcome.conf
+                  yq -e '.efi.recommendedSize == "4GiB"' ${ojuny-calamares-extensions}/etc/calamares/modules/partition.conf
                   yq -e '.mkpasswd | length > 0' ${ojuny-calamares-extensions}/etc/calamares/modules/ojuny.conf
                   prepare_repo_path="$(yq -r '.prepareRepo' ${ojuny-calamares-extensions}/etc/calamares/modules/ojuny.conf)"
                   if [ -n "$prepare_repo_path" ]; then
