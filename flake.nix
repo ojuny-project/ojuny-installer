@@ -260,6 +260,13 @@
               touch $out
             '';
 
+            debug = pkgs.runCommand "check-debug-iso" { } ''
+              grep -q './debug.nix' ${./nixos/iso.nix}
+              grep -q './debug.nix' ${./nixos/discovery-iso.nix}
+              grep -q './debug.nix' ${./nixos/full-iso.nix}
+              touch $out
+            '';
+
             default = pkgs.runCommand "check-default" { } ''
               echo ${self.checks.${system}.format} >/dev/null
               echo ${self.checks.${system}.extensions} >/dev/null
@@ -267,6 +274,7 @@
               echo ${self.checks.${system}.unattended} >/dev/null
               echo ${self.checks.${system}.offline-install-closure} >/dev/null
               echo ${self.checks.${system}.install-report} >/dev/null
+              echo ${self.checks.${system}.debug} >/dev/null
               touch $out
             '';
 

@@ -35,6 +35,7 @@ in
   imports = [
     (modulesPath + "/installer/cd-dvd/installation-cd-graphical-base.nix")
     ./live-media-eject.nix
+    ./debug.nix
 
     inputs.ojuny-template.modules.nixos.system-graphics
     inputs.ojuny-template.modules.nixos.system-facter

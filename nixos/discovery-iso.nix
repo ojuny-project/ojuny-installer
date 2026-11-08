@@ -45,6 +45,7 @@ in
   imports = [
     (modulesPath + "/installer/cd-dvd/installation-cd-graphical-base.nix")
     ./live-media-eject.nix
+    ./debug.nix
 
     inputs.ojuny-template.modules.nixos.system-graphics
     inputs.ojuny-template.modules.nixos.system-facter
@@ -245,18 +246,6 @@ in
     pkgs.nixos-facter
     pkgs.zsh
   ];
-
-  # Temporary remote debugging access for the discovery ISO.
-  services.openssh = {
-    enable = true;
-    settings.PermitRootLogin = "prohibit-password";
-  };
-
-  users.users.root.openssh.authorizedKeys.keys = [
-    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA4aHtgEXDU+Hoy3jBzEx42C1stuRo2Rv2jLX4Vc6M9Z ojuny-test-temporary"
-  ];
-
-  networking.firewall.allowedTCPPorts = [ 22 ];
 
   services.upower.enable = true;
 

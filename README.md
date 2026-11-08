@@ -87,6 +87,9 @@ existing `00-host.nix` when the template ships one.
 - The attended installer enables the optional rEFInd "Other systems" helper
   when another internal ESP or operating system would not be visible to
   systemd-boot.
+- The live, discovery and offline ISOs import `nixos/debug.nix`, a temporary
+  SSH and troubleshooting probe. Remove that module and its three imports
+  before release.
 - Offline images cover the default full system; unusual hardware, out-of-tree drivers and optional patches still need network.
 - Ten prebuilt applications dominate build time.
 
