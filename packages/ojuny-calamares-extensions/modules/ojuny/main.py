@@ -1171,12 +1171,16 @@ def install():
     if not root or not os.path.isdir(root):
         raise RuntimeError("invalid rootMountPoint: {root}".format(root=root))
 
+    efi_mount = global_storage.value("efiSystemPartition") or "/boot"
+    boot_mount = os.path.join(root, efi_mount.lstrip("/"))
+
     template_path = job_configuration.get("templatePath")
     if not template_path or not os.path.isdir(template_path):
         raise RuntimeError("template not found: {path}".format(path=template_path))
 
     prepare_repo = job_configuration.get("prepareRepo") or None
     regenerate_hardware = job_configuration.get("regenerateHardware") or None
+    bootorder = job_configuration.get("bootorder") or None
 
     required = [
         "pkexec",
@@ -1205,6 +1209,7 @@ def install():
     for label, path in (
         ("prepare-repo", prepare_repo),
         ("regenerate-hardware", regenerate_hardware),
+        ("bootorder", bootorder),
     ):
         if path and (not os.path.isfile(path) or not os.access(path, os.X_OK)):
             raise RuntimeError("{label} is not executable: {path}".format(label=label, path=path))
@@ -1425,6 +1430,23 @@ def install():
         phase("preloading offline store")
         preload_store_paths(root)
 
+    previous_boot = None
+    if bootorder:
+        handle, previous_boot = tempfile.mkstemp(prefix="ojuny-bootorder-", suffix=".txt")
+        os.close(handle)
+        snapshot = subprocess.run(
+            [bootorder],
+            env=dict(os.environ, OJUNY_BOOTORDER_MODE="snapshot"),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        with open(previous_boot, "w") as handle:
+            handle.write(snapshot.stdout)
+        append_log("boot order before install:")
+        for line in snapshot.stdout.splitlines():
+            append_log("  " + line)
+
     libcalamares.job.setprogress(0.32)
     phase("starting nixos-install")
     run_command([cmd("pkexec"), cmd("chmod"), "755", root])
@@ -1486,6 +1508,31 @@ def install():
         raise RuntimeError("nixos-install failed:\n{}".format("\n".join(output)))
 
     phase("nixos-install finished")
+
+    if bootorder and previous_boot and os.path.exists(previous_boot):
+        try:
+            result = subprocess.run(
+                [bootorder],
+                env=dict(
+                    os.environ,
+                    OJUNY_BOOTORDER_MODE="install",
+                    OJUNY_BOOT_MOUNT=boot_mount,
+                    OJUNY_RECOVERY_ENABLED="true",
+                    OJUNY_BOOTORDER_PREVIOUS=previous_boot,
+                ),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            append_log("boot order after install:")
+            for line in (result.stdout or "").splitlines():
+                append_log("  " + line)
+            if result.returncode != 0:
+                append_log("bootorder exited with {}".format(result.returncode))
+        except OSError as error:
+            append_log("bootorder failed: {}".format(error))
+        finally:
+            os.unlink(previous_boot)
 
     libcalamares.job.setprogress(0.98)
     phase("copying generated configuration")

@@ -14,6 +14,7 @@ let
       prepareRepo = (inputs.ojuny-template.packages.${pkgs.system} or { }).prepare-repo or null;
       regenerateHardware =
         (inputs.ojuny-template.packages.${pkgs.system} or { }).regenerate-hardware or null;
+      bootorder = (inputs.ojuny-template.packages.${pkgs.system} or { }).ojuny-bootorder or null;
       mkpasswd = pkgs.mkpasswd;
     }).overrideAttrs
       (previous: {
@@ -144,12 +145,14 @@ in
 
       wlr-utils = final.runCommandLocal "wlr-utils" { } "mkdir -p $out/bin";
 
-      kdePackages = prev.kdePackages.overrideScope (kfinal: kprev: {
-        kdeconnect-kde = final.runCommandLocal "kdeconnect-kde" { } "mkdir -p $out/bin";
-        kpmcore = kprev.kpmcore.overrideAttrs (old: {
-          patches = (old.patches or [ ]) ++ [ ../packages/kpmcore-luks2-sector-size.patch ];
-        });
-      });
+      kdePackages = prev.kdePackages.overrideScope (
+        kfinal: kprev: {
+          kdeconnect-kde = final.runCommandLocal "kdeconnect-kde" { } "mkdir -p $out/bin";
+          kpmcore = kprev.kpmcore.overrideAttrs (old: {
+            patches = (old.patches or [ ]) ++ [ ../packages/kpmcore-luks2-sector-size.patch ];
+          });
+        }
+      );
     })
     (final: prev: {
       khal = prev.khal.overrideAttrs (old: {

@@ -15,6 +15,7 @@ let
     prepareRepo = (inputs.ojuny-template.packages.${pkgs.system} or { }).prepare-repo or null;
     regenerateHardware =
       (inputs.ojuny-template.packages.${pkgs.system} or { }).regenerate-hardware or null;
+    bootorder = (inputs.ojuny-template.packages.${pkgs.system} or { }).ojuny-bootorder or null;
     mkpasswd = pkgs.mkpasswd;
     offline = true;
   };
@@ -57,11 +58,13 @@ in
         enableLanguages = [ "eng" ];
       };
 
-      kdePackages = prev.kdePackages.overrideScope (kfinal: kprev: {
-        kpmcore = kprev.kpmcore.overrideAttrs (old: {
-          patches = (old.patches or [ ]) ++ [ ../packages/kpmcore-luks2-sector-size.patch ];
-        });
-      });
+      kdePackages = prev.kdePackages.overrideScope (
+        kfinal: kprev: {
+          kpmcore = kprev.kpmcore.overrideAttrs (old: {
+            patches = (old.patches or [ ]) ++ [ ../packages/kpmcore-luks2-sector-size.patch ];
+          });
+        }
+      );
     })
   ];
 

@@ -5,6 +5,7 @@
   templatePath,
   prepareRepo ? null,
   regenerateHardware ? null,
+  bootorder ? null,
   mkpasswd ? null,
   offline ? false,
 }:
@@ -50,6 +51,7 @@ stdenvNoCC.mkDerivation {
       --replace-fail '@regenerateHardware@' "${
         if regenerateHardware == null then "" else lib.getExe' regenerateHardware "regenerate-hardware"
       }" \
+      --replace-fail '@bootorder@' "${if bootorder == null then "" else lib.getExe bootorder}" \
       --replace-fail '@mkpasswd@' "${if mkpasswd == null then "" else lib.getExe mkpasswd}"
 
     runHook postInstall

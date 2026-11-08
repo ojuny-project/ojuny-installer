@@ -118,16 +118,21 @@
             templatePath = inputs.ojuny-template.outPath;
             prepareRepo = (inputs.ojuny-template.packages.${system} or { }).prepare-repo or null;
             regenerateHardware = (inputs.ojuny-template.packages.${system} or { }).regenerate-hardware or null;
+            bootorder = (inputs.ojuny-template.packages.${system} or { }).ojuny-bootorder or null;
             mkpasswd = pkgs.mkpasswd;
           };
 
-          pkgsWithKpmcore = pkgs.extend (final: prev: {
-            kdePackages = prev.kdePackages.overrideScope (kfinal: kprev: {
-              kpmcore = kprev.kpmcore.overrideAttrs (old: {
-                patches = (old.patches or [ ]) ++ [ ./packages/kpmcore-luks2-sector-size.patch ];
-              });
-            });
-          });
+          pkgsWithKpmcore = pkgs.extend (
+            final: prev: {
+              kdePackages = prev.kdePackages.overrideScope (
+                kfinal: kprev: {
+                  kpmcore = kprev.kpmcore.overrideAttrs (old: {
+                    patches = (old.patches or [ ]) ++ [ ./packages/kpmcore-luks2-sector-size.patch ];
+                  });
+                }
+              );
+            }
+          );
 
           calamares = pkgsWithKpmcore.calamares.overrideAttrs (previous: {
             patches =
@@ -261,13 +266,16 @@
           checks = {
             inherit install-report;
 
-            collect-install-report = pkgs.runCommand "check-collect-install-report" {
-              nativeBuildInputs = [ pkgs.python3 ];
-            } ''
-              cd ${./.}
-              python3 -m unittest scripts.tests.test_collect_install_report -v
-              touch $out
-            '';
+            collect-install-report =
+              pkgs.runCommand "check-collect-install-report"
+                {
+                  nativeBuildInputs = [ pkgs.python3 ];
+                }
+                ''
+                  cd ${./.}
+                  python3 -m unittest scripts.tests.test_collect_install_report -v
+                  touch $out
+                '';
 
             debug = pkgs.runCommand "check-debug-iso" { } ''
               grep -q './debug.nix' ${./nixos/iso.nix}
@@ -328,6 +336,13 @@
                     case "$regenerate_path" in
                       */bin/regenerate-hardware) ;;
                       *) echo "regenerateHardware is not an executable path: $regenerate_path"; exit 1 ;;
+                    esac
+                  fi
+                  bootorder_path="$(yq -r '.bootorder' ${ojuny-calamares-extensions}/etc/calamares/modules/ojuny.conf)"
+                  if [ -n "$bootorder_path" ]; then
+                    case "$bootorder_path" in
+                      */bin/ojuny-bootorder) ;;
+                      *) echo "bootorder is not an executable path: $bootorder_path"; exit 1 ;;
                     esac
                   fi
                   yq -e '.name == "ojuny" and .interface == "python"' ${ojuny-calamares-extensions}/lib/calamares/modules/ojuny/module.desc

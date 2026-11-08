@@ -89,6 +89,10 @@ existing `00-host.nix` when the template ships one.
   The installer creates a 1 GiB ojuny ESP in the free space and leaves the
   Windows ESP unassigned. systemd-boot, rEFInd, the kernels, the initrds and the
   recovery UKI live on the ojuny ESP.
+- On UEFI, the installer restores the firmware boot order it captured before
+  `nixos-install`, then inserts `Linux Boot Manager` above the first internal
+  entry. This cancels the one-time move to the top done by `bootctl install`, so
+  external entries keep their positions.
 - The attended installer enables the optional rEFInd "Other systems" helper
   when another internal ESP or operating system would not be visible to
   systemd-boot.
