@@ -84,6 +84,11 @@ existing `00-host.nix` when the template ships one.
   and install alongside an existing system. It does not resize NTFS; shrink the
   Windows partition in Windows Disk Management first and export the BitLocker
   recovery key.
+- Windows must be installed first; Windows recreates the ESP and removes a
+  Linux bootloader installed before it. The 200 MiB Windows ESP is not resized.
+  The installer creates a 1 GiB ojuny ESP in the free space and leaves the
+  Windows ESP unassigned. systemd-boot, rEFInd, the kernels, the initrds and the
+  recovery UKI live on the ojuny ESP.
 - The attended installer enables the optional rEFInd "Other systems" helper
   when another internal ESP or operating system would not be visible to
   systemd-boot.

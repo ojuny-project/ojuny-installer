@@ -21,13 +21,22 @@ origin, partition, summary, install, finished.
   selected template and repository by name. It does not edit them.
 - The installer scans the internal drives during install. It enables the
   optional rEFInd multiboot helper when another internal ESP or operating
-  system would not be visible to systemd-boot. Windows on the ESP that ojuny
-  reuses is detected natively and does not by itself enable the helper.
+  system would not be visible to systemd-boot. The supported Windows layout
+  uses a separate 1 GiB ojuny ESP, so the Windows ESP triggers the helper.
+  The installer rejects using the Windows ESP as the ojuny boot partition.
+- The installed system enables the recovery UKI by default. It builds a signed
+  recovery image on the Ojuny ESP and adds an `Ojuny Recovery` firmware entry.
+  The Recovery settings page can turn it off.
 - Windows NTFS is never resized. The partition choice page shows a note telling
   the user to shrink the Windows partition in Windows Disk Management and export
   the BitLocker recovery key before starting the install. Alongside mode can
   shrink XFS, EXT4, BTRFS, f2fs and vfat partitions. The live ISO does not
   include `ntfs-3g` or `ntfsresize`, so Calamares cannot offer NTFS resizing.
+- Install Windows first. Windows recreates the ESP when it installs and removes
+  a Linux bootloader installed before it. Do not resize the 200 MiB Windows ESP.
+  The installer creates a 1 GiB ojuny ESP in the free space and leaves the
+  Windows ESP unassigned. systemd-boot, rEFInd, the kernels, the initrds and the
+  recovery UKI live on the ojuny ESP.
 - A prepared clone or git setup failure stops the install with a blocking error.
   The error asks the user to close and reopen the installer from the `Install
   Ojuny` entry, return to the template or origin page, correct the details and

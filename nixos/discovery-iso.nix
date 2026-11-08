@@ -33,6 +33,7 @@ let
       ++ [
         ../packages/calamares-compact-locale.patch
         ../packages/calamares-partition-note.patch
+        ../packages/calamares-ojuny-esp.patch
       ];
   });
 
@@ -143,9 +144,12 @@ in
 
       wlr-utils = final.runCommandLocal "wlr-utils" { } "mkdir -p $out/bin";
 
-      kdePackages = prev.kdePackages // {
+      kdePackages = prev.kdePackages.overrideScope (kfinal: kprev: {
         kdeconnect-kde = final.runCommandLocal "kdeconnect-kde" { } "mkdir -p $out/bin";
-      };
+        kpmcore = kprev.kpmcore.overrideAttrs (old: {
+          patches = (old.patches or [ ]) ++ [ ../packages/kpmcore-luks2-sector-size.patch ];
+        });
+      });
     })
     (final: prev: {
       khal = prev.khal.overrideAttrs (old: {

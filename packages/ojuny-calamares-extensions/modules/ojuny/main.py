@@ -1140,6 +1140,19 @@ def restore_offline_inputs(rewrite):
     write_file(lock_path, original)
 
 
+def reject_reused_windows_esp(root):
+    for mount in ("boot", "efi", "boot/efi"):
+        marker = os.path.join(root, mount, "EFI/Microsoft/Boot/bootmgfw.efi")
+        if os.path.exists(marker):
+            raise RuntimeError(
+                "The install is using the Windows EFI system partition as the Ojuny "
+                "boot partition. Create a separate 1 GiB Ojuny ESP in the free space "
+                "and leave the Windows ESP, Microsoft reserved partition and recovery "
+                "partition unassigned. This keeps the Ojuny bootloader and recovery "
+                "entry independent of Windows updates."
+            )
+
+
 def install():
     global TARGET_ROOT, TARGET_USER, START_TIME, LOG_SAVED
     global_storage = libcalamares.globalstorage
@@ -1258,6 +1271,7 @@ def install():
     firmware = global_storage.value("firmwareType")
     device = boot_device()
     partitions = global_storage.value("partitions") or []
+    reject_reused_windows_esp(root)
 
     libcalamares.job.setprogress(0.02)
     phase("preparing boot configuration")

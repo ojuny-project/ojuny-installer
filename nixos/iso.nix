@@ -23,6 +23,7 @@ let
       ++ [
         ../packages/calamares-compact-locale.patch
         ../packages/calamares-partition-note.patch
+        ../packages/calamares-ojuny-esp.patch
       ];
   });
 
@@ -80,6 +81,12 @@ in
       tesseract = prev.tesseract.override {
         enableLanguages = [ "eng" ];
       };
+
+      kdePackages = prev.kdePackages.overrideScope (kfinal: kprev: {
+        kpmcore = kprev.kpmcore.overrideAttrs (old: {
+          patches = (old.patches or [ ]) ++ [ ../packages/kpmcore-luks2-sector-size.patch ];
+        });
+      });
     })
   ];
 

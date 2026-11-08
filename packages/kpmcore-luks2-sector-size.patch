@@ -1,0 +1,36 @@
+--- a/src/fs/luks2.cpp
++++ b/src/fs/luks2.cpp
+@@ -11,10 +11,14 @@
+ #include "util/externalcommand.h"
+ #include "util/report.h"
+ 
++#include <QFile>
+ #include <QRegularExpression>
+ 
+ #include <KLocalizedString>
+ 
++#include <linux/fs.h>
++#include <sys/ioctl.h>
++
+ namespace FS
+ {
+ 
+@@ -39,8 +43,17 @@
+     Q_ASSERT(m_innerFs);
+     Q_ASSERT(!m_passphrase.isEmpty());
+ 
++    int logicalSectorSize = 512;
++    QFile device(deviceNode);
++    if (device.open(QIODevice::ReadOnly)) {
++        int value = 0;
++        if (ioctl(static_cast<int>(device.handle()), BLKSSZGET, &value) == 0 && value > 0) {
++            logicalSectorSize = value;
++        }
++    }
++
+     QStringList createCmdArgs = { QStringLiteral("--use-random"),
+-                                  QStringLiteral("--sector-size"), QStringLiteral("4096"),
++                                  QStringLiteral("--sector-size"), QString::number(logicalSectorSize),
+                                   QStringLiteral("--key-size"), QStringLiteral("512"),
+                                   QStringLiteral("--hash"), QStringLiteral("sha512"),
+                                   QStringLiteral("--batch-mode"),

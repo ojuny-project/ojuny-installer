@@ -1,0 +1,212 @@
+--- a/src/modules/partition/gui/ChoicePage.cpp
++++ b/src/modules/partition/gui/ChoicePage.cpp
+@@ -711,22 +711,33 @@
+               || m_config->installChoice() == InstallChoice::Replace ) )
+     {
+         QList< Partition* > efiSystemPartitions = m_core->efiSystemPartitions();
+-        if ( efiSystemPartitions.count() == 1 )
++        const QString efiMountPoint
++            = Calamares::JobQueue::instance()->globalStorage()->value( "efiSystemPartition" ).toString();
++        bool efiAlreadyConfigured = false;
++        for ( Partition* efiPartition : efiSystemPartitions )
+         {
+-            PartitionInfo::setMountPoint(
+-                efiSystemPartitions.first(),
+-                Calamares::JobQueue::instance()->globalStorage()->value( "efiSystemPartition" ).toString() );
+-        }
+-        else if ( efiSystemPartitions.count() > 1 && m_efiComboBox )
+-        {
+-            PartitionInfo::setMountPoint(
+-                efiSystemPartitions.at( m_efiComboBox->currentIndex() ),
+-                Calamares::JobQueue::instance()->globalStorage()->value( "efiSystemPartition" ).toString() );
++            if ( PartitionInfo::mountPoint( efiPartition ) == efiMountPoint )
++            {
++                efiAlreadyConfigured = true;
++                break;
++            }
+         }
+-        else
++
++        if ( !efiAlreadyConfigured )
+         {
+-            cError() << "cannot set up EFI system partition.\nESP count:" << efiSystemPartitions.count()
+-                     << "\nm_efiComboBox:" << m_efiComboBox;
++            if ( efiSystemPartitions.count() == 1 )
++            {
++                PartitionInfo::setMountPoint( efiSystemPartitions.first(), efiMountPoint );
++            }
++            else if ( efiSystemPartitions.count() > 1 && m_efiComboBox )
++            {
++                PartitionInfo::setMountPoint( efiSystemPartitions.at( m_efiComboBox->currentIndex() ), efiMountPoint );
++            }
++            else
++            {
++                cError() << "cannot set up EFI system partition.\nESP count:" << efiSystemPartitions.count()
++                         << "\nm_efiComboBox:" << m_efiComboBox;
++            }
+         }
+     }
+     else  // installPath is then passed to the bootloader module for MBR setup
+@@ -784,13 +795,50 @@
+                 = firstSector + m_afterPartitionSplitterWidget->splitPartitionSize() / dev->logicalSize();
+ 
+             m_core->resizePartition( dev, candidate, firstSector, newLastSector );
++
++            qint64 rootFirstSector = newLastSector + 2;
++            const QString efiMountPoint
++                = Calamares::JobQueue::instance()->globalStorage()->value( "efiSystemPartition" ).toString();
++            bool hasDedicatedEsp = false;
++            for ( Partition* efiPartition : m_core->efiSystemPartitions() )
++            {
++                if ( PartitionInfo::mountPoint( efiPartition ) == efiMountPoint )
++                {
++                    hasDedicatedEsp = true;
++                    break;
++                }
++            }
++
++            if ( !hasDedicatedEsp )
++            {
++                const qint64 espSectors
++                    = ( PartUtils::efiFilesystemRecommendedSize() + dev->logicalSize() - 1 ) / dev->logicalSize();
++                const qint64 espLastSector = rootFirstSector + espSectors - 1;
++                if ( espSectors > 0 && espLastSector < oldLastSector )
++                {
++                    Partition* esp = KPMHelpers::createNewPartition( candidate->parent(),
++                                                                     *dev,
++                                                                     candidate->roles(),
++                                                                     FileSystem::Fat32,
++                                                                     QStringLiteral( "OJUNY" ),
++                                                                     rootFirstSector,
++                                                                     espLastSector,
++                                                                     KPM_PARTITION_FLAG( None ) );
++                    PartitionInfo::setFormat( esp, true );
++                    PartitionInfo::setMountPoint( esp, efiMountPoint );
++                    m_core->createPartition( dev, esp, KPM_PARTITION_FLAG_ESP );
++                    rootFirstSector = espLastSector + 1;
++                }
++            }
++
+             m_core->layoutApply( dev,
+-                                 newLastSector + 2,
++                                 rootFirstSector,
+                                  oldLastSector,
+                                  m_config->luksFileSystemType(),
+                                  m_encryptWidget->passphrase(),
+                                  candidate->parent(),
+                                  candidate->roles() );
++            setupEfiSystemPartitionSelector();
+             m_core->dumpQueue();
+ 
+             break;
+@@ -857,9 +905,51 @@
+                         }
+                     }
+ 
++                    FileSystem::Type rootFsType = FileSystem::Unknown;
++                    PartUtils::canonicalFilesystemName( m_config->replaceModeFilesystem(), &rootFsType );
++                    m_core->partitionLayout().setDefaultFsType(
++                        rootFsType == FileSystem::Unknown ? FileSystem::Ext4 : rootFsType );
++
++                    qint64 rootFirstSector = selectedPartition->firstSector();
++                    const qint64 freeLastSector = selectedPartition->lastSector();
++                    const QString efiMountPoint
++                        = Calamares::JobQueue::instance()->globalStorage()->value( "efiSystemPartition" ).toString();
++                    bool hasDedicatedEsp = false;
++                    for ( Partition* efiPartition : m_core->efiSystemPartitions() )
++                    {
++                        if ( PartitionInfo::mountPoint( efiPartition ) == efiMountPoint )
++                        {
++                            hasDedicatedEsp = true;
++                            break;
++                        }
++                    }
++
++                    if ( !hasDedicatedEsp )
++                    {
++                        const qint64 espSectors
++                            = ( PartUtils::efiFilesystemRecommendedSize() + selectedDevice()->logicalSize() - 1 )
++                              / selectedDevice()->logicalSize();
++                        const qint64 espLastSector = rootFirstSector + espSectors - 1;
++                        if ( espSectors > 0 && espLastSector < freeLastSector )
++                        {
++                            Partition* esp = KPMHelpers::createNewPartition( newParent,
++                                                                             *selectedDevice(),
++                                                                             newRoles,
++                                                                             FileSystem::Fat32,
++                                                                             QStringLiteral( "OJUNY" ),
++                                                                             rootFirstSector,
++                                                                             espLastSector,
++                                                                             KPM_PARTITION_FLAG( None ) );
++                            PartitionInfo::setFormat( esp, true );
++                            PartitionInfo::setMountPoint( esp, efiMountPoint );
++                            m_core->createPartition( selectedDevice(), esp, KPM_PARTITION_FLAG_ESP );
++                            rootFirstSector = espLastSector + 1;
++                        }
++                    }
++
+                     m_core->layoutApply( selectedDevice(),
+-                                         selectedPartition->firstSector(),
+-                                         selectedPartition->lastSector(),
++                                         rootFirstSector,
++                                         freeLastSector,
+                                          m_config->luksFileSystemType(),
+                                          m_encryptWidget->passphrase(),
+                                          newParent,
+@@ -1219,11 +1309,14 @@
+ {
+     Q_ASSERT( m_isEfi );
+ 
++    m_efiComboBox->clear();
++
+     // Only the already existing ones:
+     QList< Partition* > efiSystemPartitions = m_core->efiSystemPartitions();
+ 
+     if ( efiSystemPartitions.count() == 0 )  //should never happen
+     {
++        m_efiComboBox->hide();
+         m_efiLabel->setText( tr( "An EFI system partition cannot be found anywhere "
+                                  "on this system. Please go back and use manual "
+                                  "partitioning to set up %1.",
+@@ -1233,6 +1326,7 @@
+     }
+     else if ( efiSystemPartitions.count() == 1 )  //probably most usual situation
+     {
++        m_efiComboBox->hide();
+         m_efiLabel->setText( tr( "The EFI system partition at %1 will be used for "
+                                  "starting %2.",
+                                  "@info, %1 is partition path, %2 is product name" )
+@@ -1243,17 +1337,31 @@
+     {
+         m_efiComboBox->show();
+         m_efiLabel->setText( tr( "EFI system partition:", "@label" ) );
++        const QString efiMountPoint
++            = Calamares::JobQueue::instance()->globalStorage()->value( "efiSystemPartition" ).toString();
++        int preferredIndex = -1;
+         for ( int i = 0; i < efiSystemPartitions.count(); ++i )
+         {
+             Partition* efiPartition = efiSystemPartitions.at( i );
+             m_efiComboBox->addItem( efiPartition->partitionPath(), i );
+ 
++            if ( PartitionInfo::mountPoint( efiPartition ) == efiMountPoint )
++            {
++                preferredIndex = i;
++                break;
++            }
++
+             // We pick an ESP on the currently selected device, if possible
+-            if ( efiPartition->devicePath() == selectedDevice()->deviceNode() && efiPartition->number() == 1 )
++            if ( preferredIndex < 0 && efiPartition->devicePath() == selectedDevice()->deviceNode()
++                 && efiPartition->number() == 1 )
+             {
+-                m_efiComboBox->setCurrentIndex( i );
++                preferredIndex = i;
+             }
+         }
++        if ( preferredIndex >= 0 )
++        {
++            m_efiComboBox->setCurrentIndex( preferredIndex );
++        }
+     }
+ }
+ 

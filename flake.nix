@@ -121,7 +121,15 @@
             mkpasswd = pkgs.mkpasswd;
           };
 
-          calamares = pkgs.calamares.overrideAttrs (previous: {
+          pkgsWithKpmcore = pkgs.extend (final: prev: {
+            kdePackages = prev.kdePackages.overrideScope (kfinal: kprev: {
+              kpmcore = kprev.kpmcore.overrideAttrs (old: {
+                patches = (old.patches or [ ]) ++ [ ./packages/kpmcore-luks2-sector-size.patch ];
+              });
+            });
+          });
+
+          calamares = pkgsWithKpmcore.calamares.overrideAttrs (previous: {
             patches =
               lib.filter (patch: !(lib.hasInfix "dont-allow-manual-luks" (toString patch))) (
                 previous.patches or [ ]
@@ -129,6 +137,7 @@
               ++ [
                 ./packages/calamares-compact-locale.patch
                 ./packages/calamares-partition-note.patch
+                ./packages/calamares-ojuny-esp.patch
               ];
           });
 
@@ -299,6 +308,11 @@
                   test -f ${ojuny-calamares-extensions}/share/calamares/branding/ojuny/template.qml
                   test -f ${ojuny-calamares-extensions}/share/calamares/branding/ojuny/origin.qml
                   test -f ${./packages/calamares-partition-note.patch}
+                  test -f ${./packages/calamares-ojuny-esp.patch}
+                  grep -q 'rootFirstSector' ${./packages/calamares-ojuny-esp.patch}
+                  grep -q 'KPM_PARTITION_FLAG_ESP' ${./packages/calamares-ojuny-esp.patch}
+                  test -f ${./packages/kpmcore-luks2-sector-size.patch}
+                  grep -q 'BLKSSZGET' ${./packages/kpmcore-luks2-sector-size.patch}
                   yq -e '.requirements.requiredStorage == 30' ${ojuny-calamares-extensions}/etc/calamares/modules/welcome.conf
                   yq -e '.requirements.required | contains(["storage"]) | not' ${ojuny-calamares-extensions}/etc/calamares/modules/welcome.conf
                   yq -e '.mkpasswd | length > 0' ${ojuny-calamares-extensions}/etc/calamares/modules/ojuny.conf
