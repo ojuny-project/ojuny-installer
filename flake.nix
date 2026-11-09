@@ -277,6 +277,17 @@
                   touch $out
                 '';
 
+            ojuny-progress =
+              pkgs.runCommand "check-ojuny-progress"
+                {
+                  nativeBuildInputs = [ pkgs.python3 ];
+                }
+                ''
+                  cd ${./.}
+                  python3 -m unittest discover -s packages/ojuny-calamares-extensions/tests -v
+                  touch $out
+                '';
+
             debug = pkgs.runCommand "check-debug-iso" { } ''
               grep -q './debug.nix' ${./nixos/iso.nix}
               grep -q './debug.nix' ${./nixos/discovery-iso.nix}
@@ -291,6 +302,7 @@
               echo ${self.checks.${system}.unattended} >/dev/null
               echo ${self.checks.${system}.offline-install-closure} >/dev/null
               echo ${self.checks.${system}.install-report} >/dev/null
+              echo ${self.checks.${system}.ojuny-progress} >/dev/null
               echo ${self.checks.${system}.debug} >/dev/null
               touch $out
             '';
@@ -354,8 +366,9 @@
                 '';
 
             module = pkgs.runCommand "check-ojuny-calamares-module" { nativeBuildInputs = [ pkgs.python3 ]; } ''
-              python3 -c 'import ast, sys; ast.parse(open(sys.argv[1]).read())' \
-                ${./packages/ojuny-calamares-extensions/modules/ojuny/main.py}
+              python3 -c 'import ast, sys; [ast.parse(open(path).read()) for path in sys.argv[1:]]' \
+                ${./packages/ojuny-calamares-extensions/modules/ojuny/main.py} \
+                ${./packages/ojuny-calamares-extensions/modules/ojuny/install_progress.py}
               touch $out
             '';
 

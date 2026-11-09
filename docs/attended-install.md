@@ -45,6 +45,27 @@ origin, partition, summary, install, finished.
   token, with mode `0600`. SSH clones get no helper. See
   `ojuny-docs/canon/09-security.md` for the deferred secrets boundary.
 
+## Progress reporting
+
+A fresh target device has an empty Nix store, so every store path in the
+target system closure must be added exactly once. The installer measures that
+total before `nixos-install` starts and then reports completed items.
+
+- Online installs evaluate the target `system.build.toplevel` derivation and
+  count the unique paths returned by
+  `nix-store -qR --include-outputs <drv>`.
+- Offline installs count the unique paths in `/etc/ojuny/flake-inputs` and
+  `/etc/ojuny/target-toplevels` because the preload seeds those paths first.
+- During the install, one completed Nix `Builds` or `CopyPaths` item increments
+  the completed count. Each item has the same weight.
+- If the live Nix plan reports more items than the precomputed total, the total
+  grows and the displayed percentage does not drop.
+- Item work maps to `0.05-0.98` of the Calamares job. The last two percent are
+  held until `nixos-install` exits.
+
+The percentage is item completion, not elapsed time. A single long build or a
+single large store path can hold the bar at one item until that item finishes.
+
 ## Status
 
 No attended run has been completed in this pass. QEMU was not run. Every row is
