@@ -11,3 +11,5 @@ result-*
 # Ignore Python bytecode
 __pycache__/
 *.pyc
+
+changes.log

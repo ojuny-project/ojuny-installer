@@ -798,7 +798,7 @@ def write_gui_config(home, flake, host, shell):
     payload = {
         "flake_path": flake,
         "terminal_command": "ghostty -e {} -c".format(shell),
-        "rebuild_command": 'sudo echo "starting rebuild"; sudo nixos-rebuild boot --flake {}#{}'.format(
+        "rebuild_command": 'sudo echo "starting rebuild"; sudo nixos-rebuild switch --flake {}#{} |& nom; echo "finished build, press any button to close the window"; read -n 1'.format(
             flake, host
         ),
         "reload_dms_on_rebuild": True,
