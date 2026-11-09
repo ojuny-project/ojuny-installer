@@ -145,6 +145,7 @@ in
       terminal = false;
     })
     inputs.ojuny-template.packages.${pkgs.system}.nix-settings-gui
+    inputs.ojuny-template.packages.${pkgs.system}.ojuny-welcome
     inputs.ojuny-template.packages.${pkgs.system}.nix-regedit
     inputs.ojuny-template.packages.${pkgs.system}.nix-shell-gui
     inputs.ojuny-template.packages.${pkgs.system}.simple-nix-update-gui
