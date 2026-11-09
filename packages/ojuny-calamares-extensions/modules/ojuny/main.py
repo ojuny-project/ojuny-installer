@@ -28,8 +28,8 @@ TARGET_USER = None
 TEMPLATE_PATH = None
 LOG_SAVED = False
 
-PROGRESS_ITEMS_START = 0.05
-PROGRESS_ITEMS_END = 0.98
+PROGRESS_ITEMS_START = 0.20
+PROGRESS_ITEMS_END = 0.95
 
 ESP_PARTTYPE = "c12a7328-f81f-11d2-ba4b-00a0c93ec93b"
 XBOOTLDR_PARTTYPE = "bc13c2ff-59e6-4262-a352-b275fd6f7172"
@@ -1351,7 +1351,6 @@ def install():
     preload = preload_paths() if offline_mode else []
     status = "counting install items"
     append_log("counting install items")
-    libcalamares.job.setprogress(PROGRESS_ITEMS_START)
     total_items = 0
     if offline_mode:
         total_items = len(set(preload))
@@ -1362,6 +1361,9 @@ def install():
             append_log("could not measure the install closure: {}".format(error))
     append_log("install items={}".format(total_items))
     progress = InstallProgress(total_items)
+    progress.start()
+    status = "installing NixOS"
+    libcalamares.job.setprogress(PROGRESS_ITEMS_START)
 
     if offline_mode:
         phase("preloading offline store")

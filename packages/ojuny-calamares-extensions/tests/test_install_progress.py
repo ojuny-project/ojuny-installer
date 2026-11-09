@@ -5,11 +5,26 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "modules" / "ojuny"))
 
-from install_progress import InstallProgress, measure_closure_items
+from install_progress import InstallProgress, is_install_item, measure_closure_items
 
 
 def line(payload):
     return "@nix " + json.dumps(payload) + "\n"
+
+
+def copy_start(act_id, path):
+    return line(
+        {
+            "action": "start",
+            "id": act_id,
+            "type": 100,
+            "text": "copying path '{}' from 'https://cache.nixos.org'".format(path),
+        }
+    )
+
+
+def stop(act_id):
+    return line({"action": "stop", "id": act_id})
 
 
 def start(act_id, act_type):
@@ -28,14 +43,22 @@ def progress(act_id, done, expected):
 
 
 class MeasureClosureItemsTest(unittest.TestCase):
-    def test_counts_unique_closure_paths(self):
+    def test_counts_only_install_items(self):
         calls = []
 
         def run(command):
             calls.append(command)
             if "eval" in command:
                 return "warning: ignored\n/nix/store/abc-system.drv\n"
-            return "/nix/store/a\n/nix/store/b\n/nix/store/a\n"
+            return "\n".join(
+                [
+                    "/nix/store/a",
+                    "/nix/store/b-source",
+                    "/nix/store/c.drv",
+                    "/nix/store/d",
+                    "/nix/store/a",
+                ]
+            )
 
         self.assertEqual(measure_closure_items(run, "/tmp/flake", "ojuny"), 2)
         self.assertIn("nix", calls[0])
@@ -46,73 +69,101 @@ class MeasureClosureItemsTest(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             measure_closure_items(lambda command: "\n", "/tmp/flake", "ojuny")
 
-    def test_rejects_empty_closure(self):
+    def test_rejects_closure_without_install_items(self):
         def run(command):
             if "eval" in command:
                 return "/nix/store/abc-system.drv\n"
-            return "\n"
+            return "/nix/store/a.drv\n/nix/store/b-source\n"
 
         with self.assertRaises(RuntimeError):
             measure_closure_items(run, "/tmp/flake", "ojuny")
 
+    def test_install_item_filter(self):
+        self.assertTrue(is_install_item("/nix/store/abc-hello-2.12"))
+        self.assertFalse(is_install_item("/nix/store/abc-hello-2.12.drv"))
+        self.assertFalse(is_install_item("/nix/store/abc-source"))
+
 
 class InstallProgressTest(unittest.TestCase):
-    def test_build_progress(self):
+    def test_events_before_start_are_ignored(self):
         tracker = InstallProgress(10)
         tracker.handle(start(1, 104))
-        tracker.handle(progress(1, 0, 10))
+        tracker.handle(progress(1, 5, 10))
+        tracker.handle(copy_start(2, "/nix/store/abc-hello"))
+        tracker.handle(stop(2))
+        self.assertEqual(tracker.done, 0)
+        self.assertEqual(tracker.fraction, 0.0)
+
+    def test_build_progress_after_start(self):
+        tracker = InstallProgress(10)
+        tracker.start()
+        tracker.handle(start(1, 104))
         tracker.handle(progress(1, 5, 10))
         self.assertEqual(tracker.done, 5)
-        self.assertEqual(tracker.total, 10)
         self.assertEqual(tracker.fraction, 0.5)
 
-    def test_copy_progress(self):
-        tracker = InstallProgress(9)
-        tracker.handle(start(2, 103))
-        tracker.handle(progress(2, 9, 9))
-        self.assertEqual(tracker.done, 9)
-        self.assertEqual(tracker.fraction, 1.0)
+    def test_copy_progress_counts_output_paths(self):
+        tracker = InstallProgress(10)
+        tracker.start()
+        tracker.handle(copy_start(2, "/nix/store/abc-hello"))
+        tracker.handle(stop(2))
+        self.assertEqual(tracker.done, 1)
+        self.assertEqual(tracker.fraction, 0.1)
+
+    def test_copy_progress_ignores_derivations_and_sources(self):
+        tracker = InstallProgress(10)
+        tracker.start()
+        tracker.handle(copy_start(2, "/nix/store/abc-hello.drv"))
+        tracker.handle(stop(2))
+        tracker.handle(copy_start(3, "/nix/store/abc-source"))
+        tracker.handle(stop(3))
+        self.assertEqual(tracker.done, 0)
+        self.assertEqual(tracker.fraction, 0.0)
 
     def test_mixed_build_and_copy_progress(self):
         tracker = InstallProgress(20)
+        tracker.start()
         tracker.handle(start(1, 104))
-        tracker.handle(start(2, 103))
         tracker.handle(progress(1, 5, 10))
-        tracker.handle(progress(2, 5, 10))
-        self.assertEqual(tracker.done, 10)
-        self.assertEqual(tracker.total, 20)
-        self.assertEqual(tracker.fraction, 0.5)
+        for index, path in enumerate(
+            ["/nix/store/abc-one", "/nix/store/abc-two"], start=10
+        ):
+            tracker.handle(copy_start(index, path))
+            tracker.handle(stop(index))
+        self.assertEqual(tracker.done, 7)
+        self.assertEqual(tracker.fraction, 0.35)
 
-    def test_total_grows_to_live_plan(self):
-        tracker = InstallProgress(5)
-        tracker.handle(start(1, 104))
-        tracker.handle(progress(1, 0, 10))
-        self.assertEqual(tracker.total, 10)
-        tracker.handle(progress(1, 5, 10))
-        self.assertEqual(tracker.fraction, 0.5)
-
-    def test_fraction_does_not_drop_when_total_grows(self):
+    def test_build_baseline_is_removed_at_start(self):
         tracker = InstallProgress(10)
         tracker.handle(start(1, 104))
         tracker.handle(progress(1, 5, 10))
+        tracker.start()
+        tracker.handle(progress(1, 10, 10))
+        self.assertEqual(tracker.done, 5)
         self.assertEqual(tracker.fraction, 0.5)
-        tracker.handle(start(2, 103))
-        tracker.handle(progress(2, 0, 10))
-        self.assertEqual(tracker.total, 20)
-        self.assertEqual(tracker.fraction, 0.5)
+
+    def test_total_grows_when_done_exceeds_it(self):
+        tracker = InstallProgress(1)
+        tracker.start()
+        tracker.handle(start(1, 104))
+        tracker.handle(progress(1, 5, 10))
+        self.assertEqual(tracker.total, 5)
+        self.assertEqual(tracker.fraction, 1.0)
+
+    def test_aggregate_copy_paths_are_ignored(self):
+        tracker = InstallProgress(10)
+        tracker.start()
+        tracker.handle(start(1, 103))
+        tracker.handle(progress(1, 5, 10))
+        self.assertEqual(tracker.done, 0)
+        self.assertEqual(tracker.fraction, 0.0)
 
     def test_zero_total(self):
         tracker = InstallProgress(0)
-        self.assertEqual(tracker.fraction, 0.0)
-        tracker.handle(start(1, 104))
-        tracker.handle(progress(1, 1, 1))
+        tracker.start()
+        tracker.handle(copy_start(2, "/nix/store/abc-hello"))
+        tracker.handle(stop(2))
         self.assertEqual(tracker.total, 1)
-        self.assertEqual(tracker.fraction, 1.0)
-
-    def test_fraction_is_clamped(self):
-        tracker = InstallProgress(1)
-        tracker.handle(start(1, 104))
-        tracker.handle(progress(1, 10, 10))
         self.assertEqual(tracker.fraction, 1.0)
 
     def test_plain_line_is_not_json(self):

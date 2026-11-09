@@ -47,21 +47,28 @@ origin, partition, summary, install, finished.
 
 ## Progress reporting
 
-A fresh target device has an empty Nix store, so every store path in the
+A fresh target device has an empty Nix store, so every installed item in the
 target system closure must be added exactly once. The installer measures that
 total before `nixos-install` starts and then reports completed items.
 
 - Online installs evaluate the target `system.build.toplevel` derivation and
-  count the unique paths returned by
-  `nix-store -qR --include-outputs <drv>`.
-- Offline installs count the unique paths in `/etc/ojuny/flake-inputs` and
-  `/etc/ojuny/target-toplevels` because the preload seeds those paths first.
-- During the install, one completed Nix `Builds` or `CopyPaths` item increments
-  the completed count. Each item has the same weight.
-- If the live Nix plan reports more items than the precomputed total, the total
-  grows and the displayed percentage does not drop.
-- Item work maps to `0.05-0.98` of the Calamares job. The last two percent are
-  held until `nixos-install` exits.
+  count the unique install items returned by
+  `nix-store -qR --include-outputs <drv>`. Derivations (`.drv`) and flake input
+  source trees (`-source`) are not install items.
+- Offline installs count the unique install items in `/etc/ojuny/flake-inputs`
+  and `/etc/ojuny/target-toplevels` because the preload seeds those paths first.
+- During the install, one completed `Builds` item or one completed `CopyPath`
+  activity for an install item increments the completed count. The aggregate
+  `CopyPaths` activity is not used because it also counts derivations and flake
+  inputs.
+- The flake input loading phase does not move the bar. The bar reaches 20
+  percent when the item phase starts and stays there until the first install
+  item completes.
+- Item work maps to `0.20-0.95` of the Calamares job, which gives the actual
+  install 75 percent of the bar. The remaining five percent are held for the
+  bootloader, generated configuration and cleanup.
+- If the completed count exceeds the precomputed total, the total grows and the
+  displayed percentage does not drop.
 
 The percentage is item completion, not elapsed time. A single long build or a
 single large store path can hold the bar at one item until that item finishes.

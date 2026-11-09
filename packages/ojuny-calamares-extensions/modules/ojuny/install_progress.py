@@ -1,14 +1,22 @@
 """Item-count progress for the Ojuny installer."""
 
 import json
+import re
 
-_ACT_COPY_PATHS = 103
+_ACT_COPY_PATH = 100
 _ACT_BUILDS = 104
 _RES_PROGRESS = 105
 
+_STORE_PATH = re.compile(r"/nix/store/[^\s']+")
+
+
+def is_install_item(path):
+    name = path.rsplit("/", 1)[-1]
+    return not name.endswith(".drv") and not name.endswith("-source")
+
 
 def measure_closure_items(run, staging, hostname):
-    """Return the number of unique store paths in the target system closure."""
+    """Return the number of installed store items in the target closure."""
 
     installable = (
         '{}#nixosConfigurations."{}".config.system.build.toplevel.drvPath'
@@ -30,20 +38,26 @@ def measure_closure_items(run, staging, hostname):
 
     closure_output = run(["nix-store", "-qR", "--include-outputs", drv_path])
     paths = {line.strip() for line in closure_output.splitlines() if line.strip()}
-    if not paths:
-        raise RuntimeError("the target system closure is empty")
-    return len(paths)
+    items = {path for path in paths if is_install_item(path)}
+    if not items:
+        raise RuntimeError("the target system closure has no install items")
+    return len(items)
 
 
 class InstallProgress:
-    """Track completed store items against a precomputed closure total."""
+    """Track installed store items against a precomputed closure total."""
 
     def __init__(self, total=0):
         self._total = max(0, int(total))
         self._done = 0
         self._fraction = 0.0
-        self._per_act_progress = {}
+        self._active = False
         self._activities = {}
+        self._copy_paths = {}
+        self._copy_items = 0
+        self._builds = {}
+        self._build_baseline = {}
+        self._built_items = 0
         self.log_messages = []
 
     @property
@@ -58,6 +72,17 @@ class InstallProgress:
     def fraction(self):
         return self._fraction
 
+    def start(self):
+        self._active = True
+        self._done = 0
+        self._fraction = 0.0
+        self._copy_paths.clear()
+        self._copy_items = 0
+        self._build_baseline = {
+            act_id: done for act_id, (done, _) in self._builds.items()
+        }
+        self._built_items = 0
+
     def handle(self, line):
         line = line.strip()
         if not line:
@@ -71,9 +96,9 @@ class InstallProgress:
 
         action = message.get("action")
         if action == "start":
-            self._activities[message["id"]] = message.get("type", 0)
+            self._on_start(message)
         elif action == "stop":
-            self._activities.pop(message["id"], None)
+            self._on_stop(message)
         elif action == "result":
             self._on_result(message)
         elif action == "msg":
@@ -85,6 +110,22 @@ class InstallProgress:
         self._update()
         return True
 
+    def _on_start(self, message):
+        act_id = message["id"]
+        act_type = message.get("type", 0)
+        self._activities[act_id] = act_type
+        if act_type == _ACT_COPY_PATH:
+            match = _STORE_PATH.search(message.get("text", ""))
+            if match:
+                self._copy_paths[act_id] = match.group(0)
+
+    def _on_stop(self, message):
+        act_id = message["id"]
+        act_type = self._activities.pop(act_id, 0)
+        path = self._copy_paths.pop(act_id, None)
+        if self._active and act_type == _ACT_COPY_PATH and path and is_install_item(path):
+            self._copy_items += 1
+
     def _on_result(self, message):
         if message.get("type", 0) != _RES_PROGRESS:
             return
@@ -92,37 +133,25 @@ class InstallProgress:
         if len(fields) < 2:
             return
         act_id = message.get("id")
-        act_type = self._activities.get(act_id, 0)
-        if act_type == _ACT_BUILDS:
-            kind = "builds"
-        elif act_type == _ACT_COPY_PATHS:
-            kind = "copies"
-        else:
+        if self._activities.get(act_id, 0) != _ACT_BUILDS:
             return
-        self._per_act_progress[(act_type, act_id)] = (kind, fields[0], fields[1])
+        self._builds[act_id] = (fields[0], fields[1])
 
     def _update(self):
-        builds_done = builds_expected = 0
-        copies_done = copies_expected = 0
-        for kind, done, expected in self._per_act_progress.values():
-            if kind == "builds":
-                builds_done += done
-                builds_expected += expected
-            else:
-                copies_done += done
-                copies_expected += expected
+        if not self._active:
+            return
 
-        live_total = builds_expected + copies_expected
-        if live_total > self._total:
-            self._total = live_total
-
-        done = builds_done + copies_done
+        self._built_items = sum(
+            max(0, done - self._build_baseline.get(act_id, 0))
+            for act_id, (done, _) in self._builds.items()
+        )
+        done = self._copy_items + self._built_items
         if done > self._done:
             self._done = done
+        if self._done > self._total:
+            self._total = self._done
 
         if self._total > 0:
             candidate = min(1.0, self._done / self._total)
             if candidate > self._fraction:
                 self._fraction = candidate
-        elif self._done > 0:
-            self._fraction = 1.0
