@@ -15,7 +15,7 @@ def is_install_item(path):
     return not name.endswith(".drv") and not name.endswith("-source")
 
 
-def measure_closure_items(run, staging, hostname):
+def measure_closure_items(run, store, staging, hostname):
     """Return the number of installed store items in the target closure."""
 
     installable = (
@@ -24,6 +24,8 @@ def measure_closure_items(run, staging, hostname):
     drv_output = run(
         [
             "nix",
+            "--store",
+            store,
             "--extra-experimental-features",
             "nix-command flakes",
             "eval",
@@ -36,7 +38,9 @@ def measure_closure_items(run, staging, hostname):
         raise RuntimeError("nix eval returned an empty derivation path")
     drv_path = lines[-1]
 
-    closure_output = run(["nix-store", "-qR", "--include-outputs", drv_path])
+    closure_output = run(
+        ["nix-store", "--store", store, "-qR", "--include-outputs", drv_path]
+    )
     paths = {line.strip() for line in closure_output.splitlines() if line.strip()}
     items = {path for path in paths if is_install_item(path)}
     if not items:
@@ -114,8 +118,11 @@ class InstallProgress:
         act_id = message["id"]
         act_type = message.get("type", 0)
         self._activities[act_id] = act_type
+        text = message.get("text", "")
+        if text and message.get("level", 5) <= 3:
+            self.log_messages.append(text)
         if act_type == _ACT_COPY_PATH:
-            match = _STORE_PATH.search(message.get("text", ""))
+            match = _STORE_PATH.search(text)
             if match:
                 self._copy_paths[act_id] = match.group(0)
 

@@ -84,6 +84,8 @@ existing `00-host.nix` when the template ships one.
   and install alongside an existing system. It does not resize NTFS; shrink the
   Windows partition in Windows Disk Management first and export the BitLocker
   recovery key.
+- Every install mode offers the same swap choice: none, swap without hibernate,
+  or swap with hibernate.
 - Windows must be installed first; Windows recreates the ESP and removes a
   Linux bootloader installed before it. The 200 MiB Windows ESP is not resized.
   The installer creates a 4 GiB ojuny ESP in the replaced partition and leaves

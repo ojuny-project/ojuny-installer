@@ -1,21 +1,85 @@
 --- a/src/modules/partition/gui/ChoicePage.cpp
 +++ b/src/modules/partition/gui/ChoicePage.cpp
-@@ -711,22 +711,33 @@
+@@ -278,6 +278,12 @@
+     {
+         m_eraseSwapChoiceComboBox = createCombo( m_config->swapChoices(), m_config->swapChoice() );
+         m_eraseButton->addOptionsComboBox( m_eraseSwapChoiceComboBox );
++
++        m_replaceSwapChoiceComboBox = createCombo( m_config->swapChoices(), m_config->swapChoice() );
++        m_replaceButton->addOptionsComboBox( m_replaceSwapChoiceComboBox );
++
++        m_alongsideSwapChoiceComboBox = createCombo( m_config->swapChoices(), m_config->swapChoice() );
++        m_alongsideButton->addOptionsComboBox( m_alongsideSwapChoiceComboBox );
+     }
+ 
+     if ( m_config->eraseFsTypes().count() > 1 )
+@@ -343,12 +349,15 @@
+     m_rightLayout->setStretchFactor( m_previewAfterFrame, 0 );
+ 
+     connect( this, &ChoicePage::actionChosen, this, &ChoicePage::onActionChanged );
+-    if ( m_eraseSwapChoiceComboBox )
++    for ( QComboBox* box : { m_eraseSwapChoiceComboBox, m_replaceSwapChoiceComboBox, m_alongsideSwapChoiceComboBox } )
+     {
+-        connect( m_eraseSwapChoiceComboBox,
+-                 QOverload< int >::of( &QComboBox::currentIndexChanged ),
+-                 this,
+-                 &ChoicePage::onEraseSwapChoiceChanged );
++        if ( box )
++        {
++            connect( box,
++                     QOverload< int >::of( &QComboBox::currentIndexChanged ),
++                     this,
++                     [ this, box ] { onSwapChoiceChanged( box ); } );
++        }
+     }
+ 
+     updateSwapChoicesTr();
+@@ -481,13 +490,25 @@
+ }
+ 
+ void
+-ChoicePage::onEraseSwapChoiceChanged()
++ChoicePage::onSwapChoiceChanged( QComboBox* source )
+ {
+-    if ( m_eraseSwapChoiceComboBox )
++    if ( !source )
+     {
+-        m_config->setSwapChoice( m_eraseSwapChoiceComboBox->currentData().toInt() );
+-        onActionChanged();
++        return;
+     }
++
++    const int index = source->currentIndex();
++    m_config->setSwapChoice( source->currentData().toInt() );
++    for ( QComboBox* box : { m_eraseSwapChoiceComboBox, m_replaceSwapChoiceComboBox, m_alongsideSwapChoiceComboBox } )
++    {
++        if ( box && box != source && box->currentIndex() != index )
++        {
++            box->blockSignals( true );
++            box->setCurrentIndex( index );
++            box->blockSignals( false );
++        }
++    }
++    onActionChanged();
+ }
+ 
+ void
+@@ -711,22 +732,33 @@
                || m_config->installChoice() == InstallChoice::Replace ) )
      {
          QList< Partition* > efiSystemPartitions = m_core->efiSystemPartitions();
 -        if ( efiSystemPartitions.count() == 1 )
-+        const QString efiMountPoint
-+            = Calamares::JobQueue::instance()->globalStorage()->value( "efiSystemPartition" ).toString();
-+        bool efiAlreadyConfigured = false;
-+        for ( Partition* efiPartition : efiSystemPartitions )
-         {
+-        {
 -            PartitionInfo::setMountPoint(
 -                efiSystemPartitions.first(),
 -                Calamares::JobQueue::instance()->globalStorage()->value( "efiSystemPartition" ).toString() );
 -        }
 -        else if ( efiSystemPartitions.count() > 1 && m_efiComboBox )
--        {
++        const QString efiMountPoint
++            = Calamares::JobQueue::instance()->globalStorage()->value( "efiSystemPartition" ).toString();
++        bool efiAlreadyConfigured = false;
++        for ( Partition* efiPartition : efiSystemPartitions )
+         {
 -            PartitionInfo::setMountPoint(
 -                efiSystemPartitions.at( m_efiComboBox->currentIndex() ),
 -                Calamares::JobQueue::instance()->globalStorage()->value( "efiSystemPartition" ).toString() );
@@ -47,7 +111,7 @@
          }
      }
      else  // installPath is then passed to the bootloader module for MBR setup
-@@ -784,13 +795,50 @@
+@@ -784,13 +816,59 @@
                  = firstSector + m_afterPartitionSplitterWidget->splitPartitionSize() / dev->logicalSize();
  
              m_core->resizePartition( dev, candidate, firstSector, newLastSector );
@@ -87,10 +151,20 @@
 +                }
 +            }
 +
++            const qint64 rootLastSector = PartitionActions::createSwapPartition( m_core,
++                                                                                dev,
++                                                                                candidate->parent(),
++                                                                                candidate->roles(),
++                                                                                rootFirstSector,
++                                                                                oldLastSector,
++                                                                                m_config->swapChoice(),
++                                                                                m_config->luksFileSystemType(),
++                                                                                m_encryptWidget->passphrase() );
              m_core->layoutApply( dev,
 -                                 newLastSector + 2,
+-                                 oldLastSector,
 +                                 rootFirstSector,
-                                  oldLastSector,
++                                 rootLastSector,
                                   m_config->luksFileSystemType(),
                                   m_encryptWidget->passphrase(),
                                   candidate->parent(),
@@ -99,7 +173,7 @@
              m_core->dumpQueue();
  
              break;
-@@ -857,9 +905,51 @@
+@@ -857,9 +935,61 @@
                          }
                      }
  
@@ -145,23 +219,36 @@
 +                        }
 +                    }
 +
++                    const qint64 rootLastSector
++                        = PartitionActions::createSwapPartition( m_core,
++                                                                 selectedDevice(),
++                                                                 newParent,
++                                                                 newRoles,
++                                                                 rootFirstSector,
++                                                                 freeLastSector,
++                                                                 m_config->swapChoice(),
++                                                                 m_config->luksFileSystemType(),
++                                                                 m_encryptWidget->passphrase() );
                      m_core->layoutApply( selectedDevice(),
 -                                         selectedPartition->firstSector(),
 -                                         selectedPartition->lastSector(),
 +                                         rootFirstSector,
-+                                         freeLastSector,
++                                         rootLastSector,
                                           m_config->luksFileSystemType(),
                                           m_encryptWidget->passphrase(),
                                           newParent,
-@@ -897,6 +987,7 @@
+@@ -896,7 +1026,9 @@
+                                                               { gs->value( "defaultPartitionType" ).toString(),
                                                                  m_config->replaceModeFilesystem(),
                                                                  m_config->luksFileSystemType(),
-                                                                 m_encryptWidget->passphrase() } );
+-                                                                m_encryptWidget->passphrase() } );
++                                                                m_encryptWidget->passphrase(),
++                                                                m_config->swapChoice() } );
 +                        setupEfiSystemPartitionSelector();
                          Partition* homePartition = findPartitionByPath( { selectedDevice() }, *homePartitionPath );
  
                          if ( homePartition && doReuseHomePartition )
-@@ -1219,11 +1310,14 @@
+@@ -1219,11 +1351,14 @@
  {
      Q_ASSERT( m_isEfi );
  
@@ -176,7 +263,7 @@
          m_efiLabel->setText( tr( "An EFI system partition cannot be found anywhere "
                                   "on this system. Please go back and use manual "
                                   "partitioning to set up %1.",
-@@ -1233,6 +1327,7 @@
+@@ -1233,6 +1368,7 @@
      }
      else if ( efiSystemPartitions.count() == 1 )  //probably most usual situation
      {
@@ -184,7 +271,7 @@
          m_efiLabel->setText( tr( "The EFI system partition at %1 will be used for "
                                   "starting %2.",
                                   "@info, %1 is partition path, %2 is product name" )
-@@ -1243,17 +1338,31 @@
+@@ -1243,17 +1379,31 @@
      {
          m_efiComboBox->show();
          m_efiLabel->setText( tr( "EFI system partition:", "@label" ) );
@@ -218,9 +305,190 @@
      }
  }
  
+@@ -1572,46 +1722,49 @@
+ void
+ ChoicePage::updateSwapChoicesTr()
+ {
+-    if ( !m_eraseSwapChoiceComboBox )
+-    {
+-        return;
+-    }
++    QComboBox* boxes[] = { m_eraseSwapChoiceComboBox, m_replaceSwapChoiceComboBox, m_alongsideSwapChoiceComboBox };
+ 
+     static_assert( SwapChoice::NoSwap == 0, "Enum values out-of-sync" );
+-    for ( int index = 0; index < m_eraseSwapChoiceComboBox->count(); ++index )
++    for ( QComboBox* box : boxes )
+     {
+-        bool ok = false;
+-        int value = 0;
+-
+-        switch ( value = m_eraseSwapChoiceComboBox->itemData( index ).toInt( &ok ) )
++        if ( !box )
+         {
+-        // case 0:
+-        case SwapChoice::NoSwap:
+-            // toInt() returns 0 on failure, so check for ok
+-            if ( ok )  // It was explicitly set to 0
+-            {
+-                m_eraseSwapChoiceComboBox->setItemText( index, tr( "No swap", "@label" ) );
+-            }
+-            else
++            continue;
++        }
++        for ( int index = 0; index < box->count(); ++index )
++        {
++            bool ok = false;
++            int value = 0;
++
++            switch ( value = box->itemData( index ).toInt( &ok ) )
+             {
+-                cWarning() << "Box item" << index << m_eraseSwapChoiceComboBox->itemText( index )
+-                           << "has non-integer role.";
++            // case 0:
++            case SwapChoice::NoSwap:
++                // toInt() returns 0 on failure, so check for ok
++                if ( ok )  // It was explicitly set to 0
++                {
++                    box->setItemText( index, tr( "No swap", "@label" ) );
++                }
++                else
++                {
++                    cWarning() << "Box item" << index << box->itemText( index ) << "has non-integer role.";
++                }
++                break;
++            case SwapChoice::ReuseSwap:
++                box->setItemText( index, tr( "Reuse swap", "@label" ) );
++                break;
++            case SwapChoice::SmallSwap:
++                box->setItemText( index, tr( "Swap (no Hibernate)", "@label" ) );
++                break;
++            case SwapChoice::FullSwap:
++                box->setItemText( index, tr( "Swap (with Hibernate)", "@label" ) );
++                break;
++            case SwapChoice::SwapFile:
++                box->setItemText( index, tr( "Swap to file", "@label" ) );
++                break;
++            default:
++                cWarning() << "Box item" << index << box->itemText( index ) << "has role" << value;
+             }
+-            break;
+-        case SwapChoice::ReuseSwap:
+-            m_eraseSwapChoiceComboBox->setItemText( index, tr( "Reuse swap", "@label" ) );
+-            break;
+-        case SwapChoice::SmallSwap:
+-            m_eraseSwapChoiceComboBox->setItemText( index, tr( "Swap (no Hibernate)", "@label" ) );
+-            break;
+-        case SwapChoice::FullSwap:
+-            m_eraseSwapChoiceComboBox->setItemText( index, tr( "Swap (with Hibernate)", "@label" ) );
+-            break;
+-        case SwapChoice::SwapFile:
+-            m_eraseSwapChoiceComboBox->setItemText( index, tr( "Swap to file", "@label" ) );
+-            break;
+-        default:
+-            cWarning() << "Box item" << index << m_eraseSwapChoiceComboBox->itemText( index ) << "has role" << value;
+         }
+     }
+ }
+--- a/src/modules/partition/gui/ChoicePage.h
++++ b/src/modules/partition/gui/ChoicePage.h
+@@ -103,7 +103,7 @@
+     /// @brief Calls applyActionChoice() as needed.
+     void onActionChanged();
+     /// @brief Calls onActionChanged() as needed.
+-    void onEraseSwapChoiceChanged();
++    void onSwapChoiceChanged( QComboBox* source );
+ 
+     void retranslate();
+ 
+@@ -153,6 +153,8 @@
+     Calamares::Widgets::PrettyRadioButton* m_replaceButton;
+     Calamares::Widgets::PrettyRadioButton* m_somethingElseButton;
+     QComboBox* m_eraseSwapChoiceComboBox = nullptr;  // UI, see also Config's swap choice
++    QComboBox* m_replaceSwapChoiceComboBox = nullptr;
++    QComboBox* m_alongsideSwapChoiceComboBox = nullptr;
+     QComboBox* m_eraseFsTypesChoiceComboBox = nullptr;  // UI, see also Config's erase-mode FS
+     QComboBox* m_replaceFsTypesChoiceComboBox = nullptr;  // UI, see also Config's erase-mode FS
+ 
 --- a/src/modules/partition/core/PartitionActions.cpp
 +++ b/src/modules/partition/core/PartitionActions.cpp
-@@ -282,11 +282,54 @@
+@@ -245,6 +245,76 @@
+     core->dumpQueue();
+ }
+ 
++qint64
++createSwapPartition( PartitionCoreModule* core,
++                     Device* dev,
++                     PartitionNode* parent,
++                     const PartitionRole& role,
++                     qint64 firstSector,
++                     qint64 lastSector,
++                     Config::SwapChoice swap,
++                     Config::LuksGeneration luksFsType,
++                     const QString& luksPassphrase )
++{
++    qint64 lastSectorForRoot = lastSector;
++    if ( ( swap != Config::SwapChoice::SmallSwap ) && ( swap != Config::SwapChoice::FullSwap ) )
++    {
++        return lastSectorForRoot;
++    }
++
++    const qint64 sectorSize = dev->logicalSize();
++    const quint64 availableSpaceB = quint64( lastSector - firstSector + 1 ) * quint64( sectorSize );
++    const quint64 suggestedSwapSizeB = swapSuggestion( availableSpaceB, swap );
++    if ( suggestedSwapSizeB == 0 )
++    {
++        return lastSectorForRoot;
++    }
++
++    Calamares::GlobalStorage* gs = Calamares::JobQueue::instance()->globalStorage();
++    const quint64 requiredSpaceB = Calamares::GiBtoBytes( gs->value( "requiredStorageGiB" ).toDouble() );
++    if ( availableSpaceB <= requiredSpaceB + 600_MiB + suggestedSwapSizeB )
++    {
++        return lastSectorForRoot;
++    }
++
++    const auto sectorsForSwap = suggestedSwapSizeB / sectorSize + 1;
++    lastSectorForRoot = Calamares::Partition::alignEndSectorTo4K( sectorSize, lastSectorForRoot - sectorsForSwap );
++
++    Partition* swapPartition = nullptr;
++    if ( luksPassphrase.isEmpty() )
++    {
++        swapPartition = KPMHelpers::createNewPartition( parent,
++                                                        *dev,
++                                                        role,
++                                                        FileSystem::LinuxSwap,
++                                                        QStringLiteral( "swap" ),
++                                                        lastSectorForRoot + 1,
++                                                        lastSector,
++                                                        KPM_PARTITION_FLAG( None ) );
++    }
++    else
++    {
++        swapPartition = KPMHelpers::createNewEncryptedPartition( parent,
++                                                                 *dev,
++                                                                 role,
++                                                                 FileSystem::LinuxSwap,
++                                                                 QStringLiteral( "swap" ),
++                                                                 lastSectorForRoot + 1,
++                                                                 lastSector,
++                                                                 luksFsType,
++                                                                 luksPassphrase,
++                                                                 KPM_PARTITION_FLAG( None ) );
++    }
++    PartitionInfo::setFormat( swapPartition, true );
++    if ( gs->contains( "swapPartitionName" ) )
++    {
++        swapPartition->setLabel( gs->value( "swapPartitionName" ).toString() );
++    }
++    core->createPartition( dev, swapPartition );
++
++    return lastSectorForRoot;
++}
++
+ void
+ doReplacePartition( PartitionCoreModule* core, Device* dev, Partition* partition, Choices::ReplacePartitionOptions o )
+ {
+@@ -282,11 +352,56 @@
      firstSector = partition->firstSector();
      lastSector = partition->lastSector();
  
@@ -272,6 +540,82 @@
 +        }
 +    }
 +
++    lastSector = createSwapPartition( core, dev, espParent, newRoles, firstSector, lastSector, o.swap, o.luksFsType, o.luksPassphrase );
++
      core->layoutApply( dev, firstSector, lastSector, o.luksFsType, o.luksPassphrase );
  
      core->dumpQueue();
+--- a/src/modules/partition/core/PartitionActions.h
++++ b/src/modules/partition/core/PartitionActions.h
+@@ -18,6 +18,8 @@
+ class PartitionCoreModule;
+ class Device;
+ class Partition;
++class PartitionNode;
++class PartitionRole;
+ 
+ namespace PartitionActions
+ {
+@@ -33,15 +35,18 @@
+     QString defaultFsType;  // e.g. "ext4" or "btrfs"
+     Config::LuksGeneration luksFsType = Config::LuksGeneration::Luks1;  // optional ("luks", "luks2")
+     QString luksPassphrase;  // optional
++    Config::SwapChoice swap = Config::SwapChoice::NoSwap;  // optional
+ 
+     ReplacePartitionOptions( const QString& pt,
+                              const QString& fs,
+                              Config::LuksGeneration luksFs,
+-                             const QString& passphrase )
++                             const QString& passphrase,
++                             Config::SwapChoice s = Config::SwapChoice::NoSwap )
+         : defaultPartitionTableType( pt )
+         , defaultFsType( fs )
+         , luksFsType( luksFs )
+         , luksPassphrase( passphrase )
++        , swap( s )
+     {
+     }
+ };
+@@ -50,7 +55,6 @@
+ {
+     QString efiPartitionMountPoint;  // optional, e.g. "/boot"
+     quint64 requiredSpaceB;  // estimated required space for root partition
+-    Config::SwapChoice swap;
+ 
+     AutoPartitionOptions( const QString& pt,
+                           const QString& fs,
+@@ -59,10 +63,9 @@
+                           const QString& efi,
+                           qint64 requiredBytes,
+                           Config::SwapChoice s )
+-        : ReplacePartitionOptions( pt, fs, luksFs, passphrase )
++        : ReplacePartitionOptions( pt, fs, luksFs, passphrase, s )
+         , efiPartitionMountPoint( efi )
+         , requiredSpaceB( requiredBytes > 0 ? quint64( requiredBytes ) : 0U )
+-        , swap( s )
+     {
+     }
+ };
+@@ -90,6 +93,22 @@
+                          Device* dev,
+                          Partition* partition,
+                          Choices::ReplacePartitionOptions options );
++
++/**
++ * @brief createSwapPartition reserves space at the end of a range and creates a swap partition.
++ * @param firstSector first sector available for root and swap.
++ * @param lastSector last sector available for root and swap.
++ * @return the last sector available for the root partition.
++ */
++qint64 createSwapPartition( PartitionCoreModule* core,
++                            Device* dev,
++                            PartitionNode* parent,
++                            const PartitionRole& role,
++                            qint64 firstSector,
++                            qint64 lastSector,
++                            Config::SwapChoice swap,
++                            Config::LuksGeneration luksFsType,
++                            const QString& luksPassphrase );
+ }  // namespace PartitionActions
+ 
+ #endif  // PARTITIONACTIONS_H

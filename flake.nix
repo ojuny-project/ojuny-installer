@@ -333,6 +333,8 @@
                   grep -q 'KPM_PARTITION_FLAG_ESP' ${./packages/calamares-ojuny-esp.patch}
                   grep -q 'src/modules/partition/core/PartitionActions.cpp' ${./packages/calamares-ojuny-esp.patch}
                   grep -q 'espParent' ${./packages/calamares-ojuny-esp.patch}
+                  grep -q 'createSwapPartition' ${./packages/calamares-ojuny-esp.patch}
+                  grep -q 'm_alongsideSwapChoiceComboBox' ${./packages/calamares-ojuny-esp.patch}
                   test -f ${./packages/kpmcore-luks2-sector-size.patch}
                   grep -q 'BLKSSZGET' ${./packages/kpmcore-luks2-sector-size.patch}
                   yq -e '.requirements.requiredStorage == 30' ${ojuny-calamares-extensions}/etc/calamares/modules/welcome.conf

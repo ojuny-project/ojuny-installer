@@ -942,11 +942,26 @@ def sanitize_hardware_module(staging):
 
     crypt = open_crypt_devices()
     referenced = set(re.findall(r"/dev/mapper/([A-Za-z0-9_.+-]+)", "\n".join(deduped)))
+    for part in libcalamares.globalstorage.value("partitions") or []:
+        if (
+            part.get("fs") == "linuxswap"
+            and part.get("claimed")
+            and part.get("luksMapperName")
+        ):
+            referenced.add(part["luksMapperName"])
+
+    insert_at = len(deduped)
+    for index in range(len(deduped) - 1, -1, -1):
+        if deduped[index].strip() == "};":
+            insert_at = index
+            break
+
     for name in sorted((referenced & set(crypt)) - set(defined)):
         line = 'boot.initrd.luks.devices."{}".device = "/dev/disk/by-uuid/{}";'.format(
             name, crypt[name]
         )
-        deduped.append(line)
+        deduped.insert(insert_at, line)
+        insert_at += 1
         defined[name] = line
 
     missing = sorted((referenced & set(crypt)) - set(defined))
@@ -1359,7 +1374,9 @@ def install():
         total_items = len(set(preload))
     else:
         try:
-            total_items = measure_closure_items(run_command_output, staging, hostname)
+            total_items = measure_closure_items(
+                run_command_output, root, staging, hostname
+            )
         except Exception as error:
             append_log("could not measure the install closure: {}".format(error))
     append_log("install items={}".format(total_items))

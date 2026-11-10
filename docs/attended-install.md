@@ -32,6 +32,8 @@ origin, partition, summary, install, finished.
   the BitLocker recovery key before starting the install. Alongside mode can
   shrink XFS, EXT4, BTRFS, f2fs and vfat partitions. The live ISO does not
   include `ntfs-3g` or `ntfsresize`, so Calamares cannot offer NTFS resizing.
+- Erase disk, Replace a partition and Install alongside all offer the same swap
+  choice: none, swap without hibernate, or swap with hibernate.
 - Install Windows first. Windows recreates the ESP when it installs and removes
   a Linux bootloader installed before it. Do not resize the 200 MiB Windows ESP.
   The installer creates a 4 GiB ojuny ESP in the replaced partition and leaves

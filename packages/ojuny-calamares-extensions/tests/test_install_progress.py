@@ -20,6 +20,7 @@ def copy_start(act_id, path):
             "action": "start",
             "id": act_id,
             "type": 100,
+            "level": 3,
             "text": "copying path '{}' from 'https://cache.nixos.org'".format(path),
         }
     )
@@ -62,14 +63,22 @@ class MeasureClosureItemsTest(unittest.TestCase):
                 ]
             )
 
-        self.assertEqual(measure_closure_items(run, "/tmp/flake", "ojuny"), 2)
+        self.assertEqual(
+            measure_closure_items(run, "/tmp/root", "/tmp/flake", "ojuny"), 2
+        )
         self.assertIn("nix", calls[0])
+        self.assertIn("--store", calls[0])
+        self.assertIn("/tmp/root", calls[0])
         self.assertIn("nix-store", calls[1])
+        self.assertIn("--store", calls[1])
+        self.assertIn("/tmp/root", calls[1])
         self.assertIn("/nix/store/abc-system.drv", calls[1])
 
     def test_rejects_empty_derivation(self):
         with self.assertRaises(RuntimeError):
-            measure_closure_items(lambda command: "\n", "/tmp/flake", "ojuny")
+            measure_closure_items(
+                lambda command: "\n", "/tmp/root", "/tmp/flake", "ojuny"
+            )
 
     def test_rejects_closure_without_install_items(self):
         def run(command):
@@ -78,7 +87,7 @@ class MeasureClosureItemsTest(unittest.TestCase):
             return "/nix/store/a.drv\n/nix/store/b-source\n"
 
         with self.assertRaises(RuntimeError):
-            measure_closure_items(run, "/tmp/flake", "ojuny")
+            measure_closure_items(run, "/tmp/root", "/tmp/flake", "ojuny")
 
     def test_install_item_filter(self):
         self.assertTrue(is_install_item("/nix/store/abc-hello-2.12"))
@@ -181,6 +190,11 @@ class InstallProgressTest(unittest.TestCase):
             line({"action": "msg", "level": 2, "msg": "ignored"})
         )
         self.assertEqual(tracker.log_messages, ["copying path"])
+
+    def test_activity_text_is_logged(self):
+        tracker = InstallProgress(1)
+        tracker.handle(copy_start(2, "/nix/store/abc-hello"))
+        self.assertIn("copying path '/nix/store/abc-hello", tracker.log_messages[0])
 
 
 class MainImportTest(unittest.TestCase):
