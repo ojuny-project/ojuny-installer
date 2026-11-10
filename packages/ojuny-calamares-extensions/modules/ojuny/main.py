@@ -5,12 +5,15 @@ import re
 import shlex
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 from pathlib import Path
 from urllib.parse import quote, urlparse
 
 import libcalamares
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from install_progress import InstallProgress, measure_closure_items
 

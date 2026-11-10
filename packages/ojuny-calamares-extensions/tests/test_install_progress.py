@@ -1,5 +1,7 @@
 import json
 import sys
+import types
+import importlib.util
 import unittest
 from pathlib import Path
 
@@ -179,6 +181,31 @@ class InstallProgressTest(unittest.TestCase):
             line({"action": "msg", "level": 2, "msg": "ignored"})
         )
         self.assertEqual(tracker.log_messages, ["copying path"])
+
+
+class MainImportTest(unittest.TestCase):
+    def test_main_finds_sibling_progress_module(self):
+        module_dir = Path(__file__).resolve().parents[1] / "modules" / "ojuny"
+        fake = types.ModuleType("libcalamares")
+        fake.globalstorage = types.SimpleNamespace(value=lambda *args, **kwargs: None)
+        fake.job = types.SimpleNamespace(
+            configuration={}, setprogress=lambda value: None
+        )
+        fake.utils = types.SimpleNamespace(
+            debug=lambda *args, **kwargs: None,
+            error=lambda *args, **kwargs: None,
+            warning=lambda *args, **kwargs: None,
+        )
+        sys.modules["libcalamares"] = fake
+        try:
+            spec = importlib.util.spec_from_file_location(
+                "ojuny_main", module_dir / "main.py"
+            )
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+        finally:
+            sys.modules.pop("libcalamares", None)
+        self.assertTrue(hasattr(module, "InstallProgress"))
 
 
 if __name__ == "__main__":
