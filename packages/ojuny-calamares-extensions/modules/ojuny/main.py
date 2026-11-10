@@ -520,37 +520,6 @@ def extra_boot_lines(root, partitions, firmware):
     if read_kernel_latest():
         lines.append("boot.kernelPackages = pkgs.linuxPackages_latest;")
 
-    luks_device_lines = []
-    for part in partitions:
-        if (
-            part.get("claimed") is True
-            and part.get("fsName") in ("luks", "luks2")
-            and part.get("device") is not None
-            and part.get("luksMapperName")
-            and part.get("uuid")
-        ):
-            luks_device_lines.append(
-                'boot.initrd.luks.devices."{}".device = "/dev/disk/by-uuid/{}";'.format(
-                    part.get("luksMapperName"), part.get("uuid")
-                )
-            )
-
-    for part in partitions:
-        if (
-            part.get("fs") not in ("linuxswap", "swap")
-            or part.get("device") is None
-            or not part.get("luksMapperName")
-            or not part.get("uuid")
-        ):
-            continue
-        line = 'boot.initrd.luks.devices."{}".device = "/dev/disk/by-uuid/{}";'.format(
-            part.get("luksMapperName"), part.get("uuid")
-        )
-        if line not in luks_device_lines:
-            luks_device_lines.append(line)
-
-    lines += luks_device_lines
-
     root_is_encrypted = any(
         part.get("mountPoint") == "/" and part.get("fsName") in ("luks", "luks2")
         for part in partitions
@@ -923,25 +892,18 @@ def sanitize_hardware_module(staging):
             if "hardware.facter.reportPath" not in line
         ]
 
-    defined = {}
-    deduped = []
+    crypt = open_crypt_devices()
+
+    existing = {}
+    kept = []
     for line in lines:
         match = LUKS_DEVICE_LINE.search(line)
         if match:
-            name = match.group(1)
-            if name in defined:
-                if defined[name] != line.strip():
-                    raise RuntimeError(
-                        'conflicting boot.initrd.luks.devices."{}" definitions'.format(
-                            name
-                        )
-                    )
-                continue
-            defined[name] = line.strip()
-        deduped.append(line)
+            existing.setdefault(match.group(1), line.strip())
+            continue
+        kept.append(line)
 
-    crypt = open_crypt_devices()
-    referenced = set(re.findall(r"/dev/mapper/([A-Za-z0-9_.+-]+)", "\n".join(deduped)))
+    referenced = set(re.findall(r"/dev/mapper/([A-Za-z0-9_.+-]+)", "\n".join(kept)))
     for part in libcalamares.globalstorage.value("partitions") or []:
         if (
             part.get("fs") == "linuxswap"
@@ -950,28 +912,25 @@ def sanitize_hardware_module(staging):
         ):
             referenced.add(part["luksMapperName"])
 
-    insert_at = len(deduped)
-    for index in range(len(deduped) - 1, -1, -1):
-        if deduped[index].strip() == "};":
+    insert_at = len(kept)
+    for index in range(len(kept) - 1, -1, -1):
+        if kept[index].strip() == "};":
             insert_at = index
             break
 
-    for name in sorted((referenced & set(crypt)) - set(defined)):
-        line = 'boot.initrd.luks.devices."{}".device = "/dev/disk/by-uuid/{}";'.format(
-            name, crypt[name]
-        )
-        deduped.insert(insert_at, line)
-        insert_at += 1
-        defined[name] = line
-
-    missing = sorted((referenced & set(crypt)) - set(defined))
-    if missing:
-        raise RuntimeError(
-            "hardware module is missing boot.initrd.luks.devices entries for: {}".format(
-                ", ".join(missing)
+    for name in sorted(referenced):
+        if name in crypt:
+            line = '    boot.initrd.luks.devices."{}".device = "/dev/disk/by-uuid/{}";'.format(
+                name, crypt[name]
             )
-        )
-    write_file(path, "\n".join(deduped) + "\n")
+        elif name in existing:
+            line = existing[name]
+        else:
+            continue
+        kept.insert(insert_at, line)
+        insert_at += 1
+
+    write_file(path, "\n".join(kept) + "\n")
 
 
 def hardware_script_args(clone, root, firmware, device, extra_file):
