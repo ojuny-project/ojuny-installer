@@ -153,13 +153,21 @@ class InstallProgressTest(unittest.TestCase):
         self.assertEqual(tracker.done, 5)
         self.assertEqual(tracker.fraction, 0.5)
 
-    def test_total_grows_when_done_exceeds_it(self):
+    def test_total_grows_to_remaining_work(self):
         tracker = InstallProgress(1)
         tracker.start()
         tracker.handle(start(1, 104))
         tracker.handle(progress(1, 5, 10))
-        self.assertEqual(tracker.total, 5)
-        self.assertEqual(tracker.fraction, 1.0)
+        self.assertEqual(tracker.total, 10)
+        self.assertEqual(tracker.fraction, 0.5)
+
+    def test_total_grows_when_precomputed_total_is_exhausted(self):
+        tracker = InstallProgress(5)
+        tracker.start()
+        tracker.handle(start(1, 104))
+        tracker.handle(progress(1, 5, 100))
+        self.assertEqual(tracker.total, 100)
+        self.assertEqual(tracker.fraction, 0.05)
 
     def test_aggregate_copy_paths_are_ignored(self):
         tracker = InstallProgress(10)

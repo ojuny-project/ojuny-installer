@@ -4,6 +4,7 @@ import json
 import re
 
 _ACT_COPY_PATH = 100
+_ACT_COPY_PATHS = 103
 _ACT_BUILDS = 104
 _RES_PROGRESS = 105
 
@@ -60,6 +61,7 @@ class InstallProgress:
         self._copy_paths = {}
         self._copy_items = 0
         self._builds = {}
+        self._copies = {}
         self._build_baseline = {}
         self._built_items = 0
         self.log_messages = []
@@ -140,9 +142,10 @@ class InstallProgress:
         if len(fields) < 2:
             return
         act_id = message.get("id")
-        if self._activities.get(act_id, 0) != _ACT_BUILDS:
-            return
-        self._builds[act_id] = (fields[0], fields[1])
+        if self._activities.get(act_id, 0) == _ACT_BUILDS:
+            self._builds[act_id] = (fields[0], fields[1])
+        elif self._activities.get(act_id, 0) == _ACT_COPY_PATHS:
+            self._copies[act_id] = (fields[0], fields[1])
 
     def _update(self):
         if not self._active:
@@ -155,10 +158,26 @@ class InstallProgress:
         done = self._copy_items + self._built_items
         if done > self._done:
             self._done = done
-        if self._done > self._total:
+
+        builds_done = sum(done for done, _ in self._builds.values())
+        builds_expected = sum(expected for _, expected in self._builds.values())
+        copies_done = sum(done for done, _ in self._copies.values())
+        copies_expected = sum(expected for _, expected in self._copies.values())
+        remaining = max(0, builds_expected - builds_done) + max(
+            0, copies_expected - copies_done
+        )
+
+        grew = False
+        if self._done >= self._total and remaining > 0:
+            self._total = self._done + remaining
+            grew = True
+        elif self._done > self._total:
             self._total = self._done
+            grew = True
 
         if self._total > 0:
             candidate = min(1.0, self._done / self._total)
-            if candidate > self._fraction:
+            if grew:
+                self._fraction = candidate
+            elif candidate > self._fraction:
                 self._fraction = candidate

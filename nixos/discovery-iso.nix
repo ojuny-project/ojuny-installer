@@ -135,6 +135,7 @@ in
   fonts.packages = lib.mkForce [ pkgs.nerd-fonts.caskaydia-cove ];
 
   nixpkgs.overlays = [
+    inputs.nom-cache-discovery.overlays.default
     (final: prev: {
       linux-firmware = prev.linux-firmware.overrideAttrs (old: {
         postInstall = (old.postInstall or "") + ''
@@ -239,6 +240,7 @@ in
 
   environment.systemPackages = [
     calamares
+    pkgs.nix-output-monitor
     (pkgs.makeDesktopItem {
       name = "ojuny-install";
       desktopName = "Install Ojuny";
