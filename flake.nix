@@ -290,6 +290,18 @@
                   touch $out
                 '';
 
+            flake-structure =
+              pkgs.runCommand "check-flake-structure"
+                {
+                  nativeBuildInputs = [ pkgs.python3 ];
+                }
+                ''
+                  cd ${./.}
+                  cmp packages/ojuny-calamares-extensions/modules/ojuny/flake_structure.py nixos/flake_structure.py
+                  python3 tests/check-fixed-paths.py
+                  touch $out
+                '';
+
             debug = pkgs.runCommand "check-debug-iso" { } ''
               grep -q './debug.nix' ${./nixos/iso.nix}
               grep -q './debug.nix' ${./nixos/discovery-iso.nix}
@@ -305,6 +317,7 @@
               echo ${self.checks.${system}.offline-install-closure} >/dev/null
               echo ${self.checks.${system}.install-report} >/dev/null
               echo ${self.checks.${system}.ojuny-progress} >/dev/null
+              echo ${self.checks.${system}.flake-structure} >/dev/null
               echo ${self.checks.${system}.debug} >/dev/null
               touch $out
             '';

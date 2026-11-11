@@ -15,6 +15,7 @@ import libcalamares
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import flake_structure
 from install_progress import InstallProgress, measure_closure_items
 
 
@@ -36,7 +37,7 @@ PROGRESS_ITEMS_END = 0.95
 
 ESP_PARTTYPE = "c12a7328-f81f-11d2-ba4b-00a0c93ec93b"
 XBOOTLDR_PARTTYPE = "bc13c2ff-59e6-4262-a352-b275fd6f7172"
-MULTIBOOT_PAGE = "modules/07-system/12-multiboot.nix"
+
 
 
 def pretty_status_message():
@@ -231,15 +232,6 @@ def hash_password(password, mkpasswd):
     raise RuntimeError("mkpasswd failed: {error}".format(error=result.stderr.strip()))
 
 
-def replace_once(text, pattern, replacement, label, required=False):
-    result, count = re.subn(pattern, replacement, text, count=1)
-    if count != 1:
-        if required:
-            raise RuntimeError("could not set {label}".format(label=label))
-        libcalamares.utils.warning("could not set {label}".format(label=label))
-    return result
-
-
 def state_version():
     try:
         with open("/etc/os-release") as handle:
@@ -373,28 +365,6 @@ def user_module(username, fullname, hashed_password, shell, version):
     )
 
 
-def host_module(hostname, clone_path):
-    return """{{ self, inputs, ... }}: {{
-
-  flake.nixosConfigurations.{hostname} = inputs.nixpkgs.lib.nixosSystem {{
-    system = "x86_64-linux";
-    modules = [
-      self.modules.nixos.host-imports
-      ({{ lib, ... }}: {{
-        services.simple-nix-update-gui.flakeUri = lib.mkDefault {flake_uri};
-        services.simple-nix-update-gui.clonePath = lib.mkDefault {clone_path};
-      }})
-    ];
-  }};
-
-}}
-""".format(
-        hostname=nix_string(hostname),
-        flake_uri=nix_string("path:" + clone_path),
-        clone_path=nix_string(clone_path),
-    )
-
-
 def fix_btrfs_subvolumes(hardware_config, partitions):
     root_is_btrfs = any(
         part.get("mountPoint") == "/" and part.get("fs") == "btrfs"
@@ -493,26 +463,12 @@ def multiboot_needed(partitions):
 
 
 def enable_multiboot(clone):
-    path = os.path.join(clone, MULTIBOOT_PAGE)
-    if not os.path.exists(path):
-        libcalamares.utils.warning(
-            "multiboot page is missing; detected other systems stay unregistered"
-        )
-        return False
-    with open(path) as handle:
-        text = handle.read()
-    if re.search(r"ojuny\.multiboot\.enable\s*=\s*true;", text):
+    if flake_structure.ensure_multiboot(clone, interactive=False):
         return True
-    updated = replace_once(
-        text,
-        r"ojuny\.multiboot\.enable\s*=\s*false;",
-        "ojuny.multiboot.enable = true;",
-        "multiboot enable",
+    libcalamares.utils.warning(
+        "multiboot module is missing; detected other systems stay unregistered"
     )
-    if updated == text:
-        return False
-    write_file(path, updated)
-    return True
+    return False
 
 
 def extra_boot_lines(root, partitions, firmware):
@@ -633,70 +589,63 @@ def configure_template(
     global TEMPLATE_PATH
     TEMPLATE_PATH = clone
     global_storage = libcalamares.globalstorage
-    configuration_path = os.path.join(clone, "modules/07-system/01-configuration.nix")
-
-    with open(configuration_path) as handle:
-        configuration = handle.read()
-
-    configuration = replace_once(
-        configuration,
-        r'networking\.hostName = "[^"]*";',
-        "networking.hostName = {hostname};".format(hostname=nix_string(hostname)),
-        "networking.hostName",
-        required=True,
-    )
-    configuration = replace_once(
-        configuration,
-        r'system\.stateVersion = "[^"]*";',
-        "system.stateVersion = {version};".format(version=nix_string(version)),
-        "system.stateVersion",
-        required=True,
-    )
 
     region = global_storage.value("locationRegion")
     zone = global_storage.value("locationZone")
-    if region and zone:
-        configuration = replace_once(
-            configuration,
-            r'time\.timeZone = "[^"]*";',
-            "time.timeZone = {zone};".format(zone=nix_string(region + "/" + zone)),
-            "time.timeZone",
-        )
-
     locale_conf = global_storage.value("localeConf") or {}
     locale = (locale_conf.get("LANG") or "").split("/")[0]
-    if locale:
-        configuration = replace_once(
-            configuration,
-            r'i18n\.defaultLocale = "[^"]*";',
-            "i18n.defaultLocale = {locale};".format(locale=nix_string(locale)),
-            "i18n.defaultLocale",
-        )
-
     keymap = global_storage.value("keyboardVConsoleKeymap") or global_storage.value(
         "keyboardLayout"
     )
-    if keymap:
-        configuration = replace_once(
-            configuration,
-            r'console\.keyMap = "[^"]*";',
-            "console.keyMap = {keymap};".format(keymap=nix_string(keymap.strip())),
-            "console.keyMap",
-        )
 
-    write_file(configuration_path, configuration)
-
-    write_file(
-        os.path.join(clone, "modules/01-users/01-user.nix"),
+    flake_structure.ensure_configuration(
+        clone,
+        {
+            "hostname": hostname,
+            "state_version": version,
+            "timezone": region + "/" + zone if region and zone else None,
+            "locale": locale or None,
+            "keymap": keymap.strip() if keymap else None,
+            "repo_path": runtime_clone,
+        },
+        interactive=False,
+        fallback_rel="modules/00-configuration.nix",
+    )
+    flake_structure.ensure_users(
+        clone,
         user_module(username, fullname, hashed_password, shell, version),
+        interactive=False,
+        fallback_rel="modules/00-user.nix",
     )
-    write_file(
-        os.path.join(clone, "modules/07-system/00-host.nix"),
-        host_module(hostname, runtime_clone),
+    flake_structure.ensure_host(
+        clone,
+        hostname,
+        runtime_clone,
+        interactive=False,
+        fallback_rel="modules/00-host.nix",
     )
-    write_file(
-        os.path.join(clone, "modules/07-system/00-hardware.nix"),
+    flake_structure.ensure_hardware(
+        clone,
         hardware_module(hardware, firmware_type, device, extra_lines),
+        interactive=False,
+        fallback_rel="modules/00-hardware.nix",
+    )
+    imports = [
+        name
+        for name in (
+            "system-configuration",
+            "users",
+            "system-hardware",
+            "system-bootloader",
+            "system-hardware-quirks",
+        )
+        if flake_structure.find_modules(clone, name)
+    ]
+    flake_structure.ensure_imports(
+        clone,
+        imports,
+        interactive=False,
+        fallback_rel="modules/00-imports.nix",
     )
 
 
@@ -748,18 +697,12 @@ def clone_prepared(url, token, branch, clone):
 
 
 def prepared_hostname(clone):
-    host_path = os.path.join(clone, "modules/07-system/00-host.nix")
-    with open(host_path) as handle:
-        text = handle.read()
-
-    match = re.search(
-        r'flake\.nixosConfigurations\.("?)([A-Za-z0-9._-]+)\1\s*=', text
-    )
-    if match is None:
+    host = flake_structure.preferred_host(clone)
+    if not host:
         raise RuntimeError(
             "could not find a nixosConfigurations host in the prepared repository"
         )
-    return match.group(2)
+    return host
 
 
 def write_credentials(cred_path, url, token):
@@ -857,7 +800,12 @@ def generate_hardware(root):
 
 def generate_facter(staging):
     report = run_command([cmd("nixos-facter")])
-    write_file(os.path.join(staging, "modules/07-system/facter.json"), report)
+    flake_structure.ensure_facter(
+        staging,
+        report,
+        interactive=False,
+        fallback_rel="modules/facter.json",
+    )
 
 
 LUKS_DEVICE_LINE = re.compile(r'boot\.initrd\.luks\.devices\."([^"]+)"\.device\s*=')
@@ -882,7 +830,12 @@ def open_crypt_devices():
 
 
 def sanitize_hardware_module(staging):
-    path = os.path.join(staging, "modules/07-system/00-hardware.nix")
+    candidates = flake_structure.find_modules(staging, "system-hardware") or flake_structure.find_modules(
+        staging, "system-bootloader"
+    )
+    path = str(candidates[0]) if candidates else os.path.join(
+        staging, "modules/00-hardware.nix"
+    )
     if not os.path.exists(path):
         return
     with open(path) as handle:
@@ -1213,8 +1166,7 @@ def install():
         except Exception as error:
             raise RuntimeError(
                 "could not read the hostname from the prepared repository: {error}\n"
-                "The repository must contain modules/07-system/00-host.nix with a "
-                "nixosConfigurations entry. The install stopped. Close and reopen "
+                "The repository must contain a nixosConfigurations entry. The install stopped. Close and reopen "
                 "the installer from the Install Ojuny entry, return to the Ojuny "
                 "template page, correct the repository, and retry.".format(
                     error=error
@@ -1267,6 +1219,7 @@ def install():
                 "--clone-relative",
                 clone_relative,
                 "--force",
+                "--non-interactive",
             ]
             if timezone:
                 prepare_args += ["--timezone", timezone]
@@ -1284,9 +1237,11 @@ def install():
                 )
             else:
                 hardware = generate_hardware(root)
-                write_file(
-                    os.path.join(staging, "modules/07-system/00-hardware.nix"),
+                flake_structure.ensure_hardware(
+                    staging,
                     hardware_module(hardware, firmware, device, extra_lines),
+                    interactive=False,
+                    fallback_rel="modules/00-hardware.nix",
                 )
             sanitize_hardware_module(staging)
             generate_facter(staging)

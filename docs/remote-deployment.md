@@ -51,7 +51,7 @@ Pass `--password` or `--ssh-key` so the installed account is not locked.
 The script runs `prepare-remote-repository` in a temporary directory, then
 `nixos-anywhere`. The prepared repository gets:
 
-- `modules/07-system/00-hardware.nix` with generic storage modules, the disko
+- The discovered `system-hardware` module, or `modules/00-hardware.nix`, with generic storage modules, the disko
   layout, the bootloader and `ojuny.network.deploy-rs.enable = true`.
 - The generated user module from `prepare-repo`.
 

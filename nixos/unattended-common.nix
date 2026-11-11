@@ -118,6 +118,7 @@ in
     text = settings.encryption.passphrase;
   };
   environment.etc."ojuny/install.py".source = ./unattended-install.py;
+  environment.etc."ojuny/flake_structure.py".source = ./flake_structure.py;
   environment.etc."ojuny/collect_install_report.py".source = ../scripts/collect_install_report.py;
 
   environment.systemPackages = path;

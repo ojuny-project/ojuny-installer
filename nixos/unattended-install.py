@@ -12,7 +12,12 @@ import time
 import traceback
 from pathlib import Path
 
+import flake_structure
+
 SETTINGS_PATH = "/etc/ojuny/settings.json"
+# The unattended ISO carries a copy of the template at this path. It is the
+# ISO's template source, not the installed flake location. The installed flake
+# location is the ojuny.repoPath option, projected to /etc/ojuny/flake-path.
 FLAKE_SOURCE = "/etc/ojuny/flake"
 DISKO_CONFIG = "/etc/ojuny/disk-config.nix"
 MOUNT = "/mnt"
@@ -365,10 +370,10 @@ def wait_for_network():
 
 
 def detect_username(root):
-    path = os.path.join(root, "modules/01-users/01-user.nix")
-    if not os.path.exists(path):
+    paths = flake_structure.find_modules(root, "users")
+    if not paths:
         return None
-    with open(path) as handle:
+    with open(paths[0]) as handle:
         match = re.search(
             r'users\.users\s*=\s*\{\s*(?:"([^"]+)"|([A-Za-z0-9_][A-Za-z0-9_-]*))\s*=',
             handle.read(),
@@ -379,19 +384,15 @@ def detect_username(root):
 
 
 def detect_host(root):
-    path = os.path.join(root, "modules/07-system/00-host.nix")
-    if not os.path.exists(path):
-        return None
-    with open(path) as handle:
-        match = re.search(r"nixosConfigurations\.([A-Za-z0-9._-]+)\s*=", handle.read())
-    return match.group(1) if match else None
+    host = flake_structure.preferred_host(root)
+    return host or None
 
 
 def detect_shell(root):
-    path = os.path.join(root, "modules/01-users/01-user.nix")
-    if not os.path.exists(path):
+    paths = flake_structure.find_modules(root, "users")
+    if not paths:
         return "zsh"
-    with open(path) as handle:
+    with open(paths[0]) as handle:
         match = re.search(r'shell\s*=\s*pkgs\.([A-Za-z0-9_-]+)\s*;', handle.read())
     return match.group(1) if match else "zsh"
 
@@ -436,6 +437,7 @@ def prepare_bundled(target, settings, username, host):
         "--clone-relative",
         settings.get("cloneRelative") or "repos/nix-flake",
         "--force",
+        "--non-interactive",
     ]
 
     if settings.get("timezone"):
@@ -455,9 +457,10 @@ def apply_settings(root, settings, username, host, runtime_flake):
 
 
 def apply_user_settings(root, settings):
-    path = os.path.join(root, "modules/01-users/01-user.nix")
-    if not os.path.exists(path):
+    paths = flake_structure.find_modules(root, "users")
+    if not paths:
         return
+    path = str(paths[0])
 
     with open(path) as handle:
         text = handle.read()
@@ -495,9 +498,10 @@ def apply_user_settings(root, settings):
 
 
 def apply_config_settings(root, settings, host):
-    path = os.path.join(root, "modules/07-system/01-configuration.nix")
-    if not os.path.exists(path):
+    paths = flake_structure.find_modules(root, "system-configuration")
+    if not paths:
         return
+    path = str(paths[0])
 
     with open(path) as handle:
         text = handle.read()
@@ -534,14 +538,25 @@ def apply_config_settings(root, settings, host):
             "console keymap",
         )
 
+    clone_relative = settings.get("cloneRelative")
+    if clone_relative:
+        text = replace_once(
+            text,
+            r'ojuny\.repoPath\s*=\s*"[^"]*";',
+            "ojuny.repoPath = {};".format(nix_string(clone_relative)),
+            "repository path",
+        )
+
     with open(path, "w") as handle:
         handle.write(text)
 
 
 def apply_host_settings(root, runtime_flake):
-    path = os.path.join(root, "modules/07-system/00-host.nix")
-    if not os.path.exists(path):
+    hosts = flake_structure.find_hosts(root)
+    paths = sorted({path for values in hosts.values() for path in values})
+    if not paths:
         return
+    path = str(paths[0])
 
     with open(path) as handle:
         text = handle.read()
@@ -589,7 +604,12 @@ def open_crypt_devices():
 
 
 def sanitize_hardware_module(root):
-    path = os.path.join(root, "modules/07-system/00-hardware.nix")
+    candidates = flake_structure.find_modules(root, "system-hardware") or flake_structure.find_modules(
+        root, "system-bootloader"
+    )
+    path = str(candidates[0]) if candidates else os.path.join(
+        root, "modules/00-hardware.nix"
+    )
     if not os.path.exists(path):
         return
     with open(path) as handle:
@@ -689,7 +709,13 @@ def write_hardware(root, settings):
 
     disk = settings["disk"]
     firmware = settings["firmware"]
-    path = os.path.join(root, "modules/07-system/00-hardware.nix")
+    candidates = flake_structure.find_modules(root, "system-hardware") or flake_structure.find_modules(
+        root, "system-bootloader"
+    )
+    path = str(candidates[0]) if candidates else os.path.join(
+        root, "modules/00-hardware.nix"
+    )
+    os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w") as handle:
         handle.write(
             """{{ self, inputs, ... }}: {{
@@ -771,6 +797,24 @@ def write_hardware(root, settings):
                 remote="true",
             )
         )
+
+    imports = [
+        name
+        for name in (
+            "system-configuration",
+            "users",
+            "system-hardware",
+            "system-bootloader",
+            "system-hardware-quirks",
+        )
+        if flake_structure.find_modules(root, name)
+    ]
+    flake_structure.ensure_imports(
+        root,
+        imports,
+        interactive=False,
+        fallback_rel="modules/00-imports.nix",
+    )
 
 
 def git_init(root):

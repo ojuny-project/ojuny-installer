@@ -117,7 +117,7 @@ Rectangle {
             visible: preparedButton.checked
             color: "#d3c6aa"
             wrapMode: Text.WordWrap
-            text: qsTr("In prepared mode Ojuny clones the repository, reads the hostname from modules/07-system/00-host.nix, and regenerates only the hardware module. The hostname on the Users page is not used. An HTTPS URL with a token writes ~/.git-credentials with mode 0600; an SSH clone uses your key and gets no credential helper.")
+            text: qsTr("In prepared mode Ojuny clones the repository, reads the hostname from the nixosConfigurations module, and regenerates only the hardware module. The hostname on the Users page is not used. An HTTPS URL with a token writes ~/.git-credentials with mode 0600; an SSH clone uses your key and gets no credential helper.")
         }
     }
 

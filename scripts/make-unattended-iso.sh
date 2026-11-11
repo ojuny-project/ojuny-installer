@@ -338,7 +338,7 @@ case "$flake" in
   http://* | https://* | git+* | ssh://* | git@* | github:* | gitlab:* | path:*)
     ;;
   *)
-    if [ ! -f "$flake/flake.nix" ] || [ ! -d "$flake/modules/07-system" ]; then
+    if [ ! -f "$flake/flake.nix" ] || [ ! -d "$flake/modules" ]; then
       echo "make-unattended-iso: $flake is not an ojuny-template repository" >&2
       exit 1
     fi

@@ -135,7 +135,7 @@ and the Calamares log. Copy it off the machine after a run.
 - Prepared mode with a bad URL stops before `nixos-install` and shows the clone
   error.
 - Prepared mode with a bad branch stops at the clone and names the branch.
-- A prepared repository without `modules/07-system/00-host.nix` stops with the
+- A prepared repository without a `nixosConfigurations.<host>` module stops with the
   host detection error.
 - Prepared mode with a bad HTTPS token stops at the clone.
 - A git origin failure after install stops and names the git setup step.

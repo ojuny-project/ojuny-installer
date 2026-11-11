@@ -49,14 +49,17 @@ prepare_fixture() {
     --state-version 26.11 \
     --clone-relative repos/nix-flake \
     --force \
+    --non-interactive \
     --timezone "$timezone" \
     --locale "$locale" \
     --keymap "$keymap"
 }
 
 write_hardware() {
-  local root="$1" body="$2"
-  cat >"$root/modules/07-system/00-hardware.nix" <<EOF
+  local root="$1" body="$2" hardware
+  hardware="$(python3 "$root/scripts/flake_structure.py" --root "$root" --non-interactive path --module hardware --fallback modules/00-hardware.nix)"
+  mkdir -p "$(dirname "$hardware")"
+  cat >"$hardware" <<EOF
 { self, ... }: {
   flake.modules.nixos.system-hardware =
     { lib, ... }:
@@ -71,6 +74,8 @@ $body
   };
 }
 EOF
+  python3 "$root/scripts/flake_structure.py" --root "$root" --non-interactive ensure-imports \
+    --name system-hardware --name system-bootloader >/dev/null
 }
 
 rewrite_lock() {

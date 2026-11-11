@@ -70,11 +70,13 @@ Write the ISO with Etcher or Rufus. For the raw persistent image, [docs/persiste
 - Remote: deploy-rs for an existing NixOS target, nixos-anywhere for a machine without NixOS. See [docs/remote-deployment.md](docs/remote-deployment.md).
 
 The attended and unattended installers copy the template to
-`/home/<user>/repos/nix-flake` and regenerate `modules/07-system/00-hardware.nix`
-from the target mounts and `modules/01-users/01-user.nix` from the account page.
-The attended installer also writes `modules/07-system/00-host.nix`, which
-registers `nixosConfigurations.<hostname>`. The unattended installer updates an
-existing `00-host.nix` when the template ships one.
+`/home/<user>/repos/nix-flake` and regenerate the discovered
+`system-hardware`, `users` and host modules from the target mounts and the
+account page. When a module does not exist, the fallback is
+`modules/00-hardware.nix`, `modules/00-user.nix` and `modules/00-host.nix`.
+The attended installer also registers `nixosConfigurations.<hostname>`. The
+unattended installer updates the discovered host module when the template
+ships one.
 
 ## Limits
 

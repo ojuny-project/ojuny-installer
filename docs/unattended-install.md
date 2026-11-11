@@ -50,9 +50,12 @@ The ISO is copied to `./result-unattended/`.
 3. `disko` creates a GPT layout with a BIOS boot partition, an ESP, an ext4
    root or a LUKS2-encrypted ext4 root, and an optional swap partition.
 4. The flake snapshot is copied to `/mnt/home/<user>/repos/nix-flake`.
+   `/etc/ojuny/flake` is the ISO's bundled template source, not the installed
+   flake location. The installed location is `ojuny.repoPath`, projected to
+   `/etc/ojuny/flake-path`.
 5. `regenerate-hardware` writes the facter report and hardware data for the
    target.
-6. The installer replaces `modules/07-system/00-hardware.nix` with a generic
+6. The installer replaces the discovered `system-hardware` module, or `modules/00-hardware.nix`, with a generic
    hardware module that contains the disko layout and bootloader. The installed
    system keeps the layout for future redeployments. The user module is the only
    other generated file.
@@ -130,7 +133,7 @@ No QEMU run is part of this repository. Test each image on real hardware:
 2. Boot the target machine and confirm the unattended service starts.
 3. Confirm the target disk is wiped only after the countdown.
 4. Confirm the installed system boots and the Ojuny desktop starts.
-5. Confirm `/home/<user>/repos/nix-flake/modules/07-system/00-hardware.nix`
+5. Confirm the discovered `system-hardware` module, or `/home/<user>/repos/nix-flake/modules/00-hardware.nix`,
    contains the disko layout.
 6. Confirm the installed system still has `disko`, `deploy-rs` and
    `nixos-anywhere`.
