@@ -20,6 +20,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    impermanence = {
+      url = "github:nix-community/impermanence";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # Local working copy of the cache daemon for the discovery ISO variant.
     # nix-cache-discovery is consumed from ojuny-project.
     nix-cache-discovery = {

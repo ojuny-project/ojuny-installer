@@ -13,6 +13,7 @@ in
   imports = [
     ./full-system.nix
     inputs.disko.nixosModules.disko
+    inputs.impermanence.nixosModules.impermanence
   ];
 
   boot.initrd.availableKernelModules = [
@@ -37,7 +38,6 @@ in
   ojuny.gpu = lib.mkForce "none";
   ojuny.plymouth.enable = lib.mkForce false;
   ojuny.patches = lib.mkForce true;
-  ojuny.patch.impermanence.enable = lib.mkForce true;
 
   networking.hostName = lib.mkForce "ojuny";
   system.stateVersion = lib.mkForce "26.11";

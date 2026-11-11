@@ -317,7 +317,29 @@ def hardware_module(hardware, firmware_type, device, extra_lines):
     )
 
 
-def user_module(username, fullname, hashed_password, shell, version):
+def uses_home_manager(clone):
+    try:
+        with open(os.path.join(clone, "flake.nix")) as handle:
+            return "home-manager" in handle.read()
+    except OSError:
+        return False
+
+
+def user_module(username, fullname, hashed_password, shell, version, home_manager):
+    home_import = (
+        " inputs.home-manager.nixosModules.home-manager" if home_manager else ""
+    )
+    home_option = " homeManager = true;" if home_manager else ""
+    home_block = (
+        """
+      home-manager.users = {{
+        {username} = {{
+          home.stateVersion = "{version}";
+        }};
+      }};"""
+        if home_manager
+        else ""
+    )
     return """/* @menu
    displayname = "Users";
    icon = "avatar-default-symbolic";
@@ -330,10 +352,10 @@ def user_module(username, fullname, hashed_password, shell, version):
 
   flake.modules.nixos.users = {{ pkgs, ... }}: {{
 
-    imports = [ inputs.home-manager.nixosModules.home-manager ];
+    imports = [{home_import} ];
 
     config = {{
-      /* @option widget = "users"; label = "Accounts"; homeManager = true; */
+      /* @option widget = "users"; label = "Accounts";{home_option} */
       users.users = {{
         {username} = {{
           isNormalUser = true;
@@ -345,12 +367,7 @@ def user_module(username, fullname, hashed_password, shell, version):
           shell = pkgs.{shell};
         }};
       }};
-
-      home-manager.users = {{
-        {username} = {{
-          home.stateVersion = "{version}";
-        }};
-      }};
+{home_block}
     }};
 
   }};
@@ -362,6 +379,9 @@ def user_module(username, fullname, hashed_password, shell, version):
         hashed_password=nix_string(hashed_password),
         shell=shell,
         version=version,
+        home_import=home_import,
+        home_option=home_option,
+        home_block=home_block,
     )
 
 
@@ -613,7 +633,14 @@ def configure_template(
     )
     flake_structure.ensure_users(
         clone,
-        user_module(username, fullname, hashed_password, shell, version),
+        user_module(
+            username,
+            fullname,
+            hashed_password,
+            shell,
+            version,
+            uses_home_manager(clone),
+        ),
         interactive=False,
         fallback_rel="modules/00-user.nix",
     )

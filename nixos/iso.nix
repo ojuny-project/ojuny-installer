@@ -43,6 +43,8 @@ in
     inputs.ojuny-template.modules.nixos.system-facter
     inputs.ojuny-template.modules.nixos.system-hardware-profile
     inputs.ojuny-template.modules.nixos.system-accessibility
+    inputs.ojuny-template.modules.nixos.system-plymouth
+    inputs.ojuny-template.inputs.nix-settings-gui.nixosModules.default
     inputs.ojuny-template.modules.nixos.applications-browser
     inputs.ojuny-template.modules.nixos.desktop-mango
     inputs.ojuny-template.modules.nixos.desktop-mangosettings
@@ -98,6 +100,7 @@ in
   system.nixos.distroId = "ojuny";
 
   ojuny.gpu = lib.mkForce "none";
+  ojuny.plymouth.enable = lib.mkForce false;
 
   isoImage.edition = lib.mkForce "installer";
   isoImage.volumeID = lib.mkForce "OJUNY_INSTALLER";

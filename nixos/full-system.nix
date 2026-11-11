@@ -2,6 +2,7 @@
 
 {
   imports = [
+    inputs.ojuny-template.inputs.ojuny-welcome.nixosModules.default
     inputs.ojuny-template.modules.nixos.system-configuration
     inputs.ojuny-template.modules.nixos.system-facter
     inputs.ojuny-template.modules.nixos.system-hardware-profile
@@ -14,6 +15,7 @@
     inputs.ojuny-template.modules.nixos.system-accessibility
     inputs.ojuny-template.modules.nixos.system-nixsettings
     inputs.ojuny-template.modules.nixos.system-updates
+    inputs.ojuny-template.modules.nixos.system-first-boot
 
     inputs.ojuny-template.modules.nixos.users-commonsettings
     inputs.ojuny-template.modules.nixos.users
