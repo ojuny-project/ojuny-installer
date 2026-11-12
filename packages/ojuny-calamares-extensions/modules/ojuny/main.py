@@ -336,7 +336,7 @@ def user_module(username, fullname, hashed_password, shell, version, home_manage
         {username} = {{
           home.stateVersion = "{version}";
         }};
-      }};"""
+      }};""".format(username=username, version=version)
         if home_manager
         else ""
     )
