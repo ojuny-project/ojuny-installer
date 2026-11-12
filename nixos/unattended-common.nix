@@ -10,6 +10,8 @@
 let
   system = pkgs.stdenv.hostPlatform.system;
 
+  templateRevision = inputs.ojuny-template.rev or inputs.ojuny-template.dirtyRev or "unknown";
+
   disko = inputs.disko.packages.${system}.disko;
   regenerateHardware = inputs.ojuny-template.packages.${system}.regenerate-hardware;
   prepareRepo = inputs.ojuny-template.packages.${system}.prepare-repo;
@@ -108,6 +110,7 @@ in
   ];
 
   environment.etc."ojuny/flake".source = inputs.ojuny-template.outPath;
+  environment.etc."ojuny/template-revision".text = templateRevision;
   environment.etc."ojuny/disk-config.nix".text = lib.generators.toPretty { } diskConfig;
   environment.etc."ojuny/settings.json" = {
     mode = "0600";

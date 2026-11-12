@@ -36,6 +36,8 @@ let
     calamares = calamaresPkg;
     inherit extensions;
   };
+
+  templateRevision = inputs.ojuny-template.rev or inputs.ojuny-template.dirtyRev or "unknown";
 in
 {
   imports = [
@@ -134,6 +136,8 @@ in
   security.polkit.enablePkexecWrapper = true;
   programs.partition-manager.enable = true;
   i18n.supportedLocales = [ "all" ];
+
+  environment.etc."ojuny/template-revision".text = templateRevision;
 
   environment.systemPackages = [
     calamares

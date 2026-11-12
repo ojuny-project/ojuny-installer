@@ -53,18 +53,42 @@ def phase(message):
     append_log("PHASE " + message)
 
 
-def write_install_report():
+def write_install_report(flake_path=None):
     try:
         import collect_install_report
     except ImportError:
         return
     try:
         variant = "offline" if OFFLINE else "discovery" if DISCOVERY else "online"
-        report = collect_install_report.collect(Path("/"), FLAKE_SOURCE, variant)
+        report = collect_install_report.collect(
+            Path("/"),
+            FLAKE_SOURCE,
+            template_revision(),
+            variant,
+            flake_revision=git_revision(flake_path),
+        )
         with open("/tmp/ojuny-install-report.json", "w") as handle:
             json.dump(report, handle, indent=2)
     except Exception as error:
         log("warning: could not collect the install report: {}".format(error))
+
+
+def template_revision():
+    try:
+        return Path("/etc/ojuny/template-revision").read_text().strip() or None
+    except OSError:
+        return None
+
+
+def git_revision(path):
+    if not path or not os.path.isdir(os.path.join(path, ".git")):
+        return None
+    try:
+        return output(
+            ["git", "-c", "safe.directory={}".format(path), "-C", path, "rev-parse", "HEAD"]
+        ) or None
+    except Exception:
+        return None
 
 
 def save_install_log():
@@ -1071,7 +1095,7 @@ def install():
     chown_tree(home, uid, gid)
 
     phase("collecting install report")
-    write_install_report()
+    write_install_report(target)
 
     phase("saving install log")
     save_install_log()

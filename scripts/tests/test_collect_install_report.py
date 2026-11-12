@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.collect_install_report import collect
+from scripts.collect_install_report import collect, template_info
 
 
 class CollectInstallReportTests(unittest.TestCase):
@@ -29,9 +29,12 @@ class CollectInstallReportTests(unittest.TestCase):
                 "2026-11-07T12:00:00 +0.000s PHASE partitioning and mounting\n"
                 "2026-11-07T12:00:05 +5.000s PHASE installation finished\n"
             )
-            report = collect(root, None, "offline")
+            report = collect(root, "/template", "a" * 40, "offline")
             self.assertEqual(report["version"], 1)
             self.assertEqual(report["iso"]["variant"], "offline")
+            self.assertEqual(report["template"]["source"], "/template")
+            self.assertEqual(report["template"]["revision"], "a" * 40)
+            self.assertEqual(report["flake"]["revision"], "unknown")
             self.assertEqual(report["environment"]["cpu"]["model"], "Test CPU")
             self.assertEqual(report["environment"]["ram"]["total_bytes"], 1024 * 1024)
             self.assertEqual(report["environment"]["network"]["interface"], "eth0")
@@ -45,10 +48,29 @@ class CollectInstallReportTests(unittest.TestCase):
             output = root / "report.json"
             from scripts.collect_install_report import main
 
-            code = main(["--root", str(root), "--output", str(output), "--variant", "test"])
+            code = main([
+                "--root", str(root),
+                "--output", str(output),
+                "--variant", "test",
+                "--template", "/template",
+                "--template-revision", "b" * 40,
+                "--flake-revision", "c" * 40,
+            ])
             self.assertEqual(code, 0)
             payload = json.loads(output.read_text())
             self.assertEqual(payload["iso"]["variant"], "test")
+            self.assertEqual(payload["template"]["revision"], "b" * 40)
+            self.assertEqual(payload["flake"]["revision"], "c" * 40)
+
+    def test_template_info_preserves_supplied_identity(self):
+        info = template_info("https://example.test/o/template", "d" * 40)
+        self.assertEqual(info["source"], "https://example.test/o/template")
+        self.assertEqual(info["revision"], "d" * 40)
+
+    def test_template_info_rejects_missing_identity(self):
+        with self.assertRaises(ValueError):
+            template_info(None, None)
+
 
 
 if __name__ == "__main__":

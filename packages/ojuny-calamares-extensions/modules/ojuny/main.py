@@ -9,7 +9,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from urllib.parse import quote, urlparse
+from urllib.parse import quote, urlparse, urlsplit, urlunsplit
 
 import libcalamares
 
@@ -29,7 +29,9 @@ INSTALL_LOG = "/tmp/ojuny-install.log"
 START_TIME = time.monotonic()
 TARGET_ROOT = None
 TARGET_USER = None
-TEMPLATE_PATH = None
+TEMPLATE_SOURCE = None
+TEMPLATE_REVISION = None
+FLAKE_REVISION = None
 LOG_SAVED = False
 
 PROGRESS_ITEMS_START = 0.20
@@ -67,13 +69,59 @@ def write_install_report():
     except ImportError:
         return
     try:
-        report = collect_install_report.collect(Path("/"), TEMPLATE_PATH, "calamares")
+        report = collect_install_report.collect(
+            Path("/"),
+            TEMPLATE_SOURCE,
+            TEMPLATE_REVISION,
+            "calamares",
+            flake_revision=FLAKE_REVISION,
+        )
         with open("/tmp/ojuny-install-report.json", "w") as handle:
             json.dump(report, handle, indent=2)
     except Exception as error:
         libcalamares.utils.warning(
             "could not collect the install report: {}".format(error)
         )
+
+
+def git_revision(path):
+    if not path or not os.path.isdir(os.path.join(path, ".git")):
+        return None
+    try:
+        return run_command_output(
+            [
+                cmd("git"),
+                "-c",
+                "safe.directory={}".format(path),
+                "-C",
+                path,
+                "rev-parse",
+                "HEAD",
+            ]
+        ).strip() or None
+    except Exception:
+        return None
+
+
+def template_revision_file():
+    try:
+        return Path("/etc/ojuny/template-revision").read_text().strip() or None
+    except OSError:
+        return None
+
+
+def capture_template_identity(source, checkout):
+    global TEMPLATE_SOURCE, TEMPLATE_REVISION
+    TEMPLATE_SOURCE = source
+    TEMPLATE_REVISION = git_revision(checkout) or template_revision_file()
+
+
+def sanitize_template_source(url):
+    parts = urlsplit(url)
+    host = parts.hostname or ""
+    if parts.port:
+        host = "{}:{}".format(host, parts.port)
+    return urlunsplit((parts.scheme, host, parts.path, "", ""))
 
 
 def save_install_log():
@@ -459,26 +507,48 @@ def multiboot_needed(partitions):
     try:
         report = json.loads(
             run_command_output(
-                [cmd("lsblk"), "-J", "-o", "PATH,TYPE,RM,TRAN,PARTTYPE,MOUNTPOINT"]
+                [
+                    cmd("lsblk"),
+                    "--tree",
+                    "-J",
+                    "-o",
+                    "NAME,PATH,TYPE,RM,TRAN,PARTTYPE,MOUNTPOINT,PKNAME",
+                ]
             )
         )
     except Exception:
         return False
 
-    for disk in report.get("blockdevices", []):
-        if disk.get("type") != "disk":
+    nodes = report.get("blockdevices") or []
+    disks = [node for node in nodes if node.get("type") == "disk"]
+
+    def scan(node):
+        yield node
+        for child in node.get("children") or []:
+            yield from scan(child)
+
+    def is_esp(node):
+        return (node.get("parttype") or "").lower() == ESP_PARTTYPE
+
+    def unclaimed_esp(node):
+        child_path = os.path.realpath(node.get("path") or "")
+        return bool(child_path) and child_path not in claimed
+
+    for disk in disks:
+        if disk.get("rm") or (disk.get("tran") or "").lower() == "usb":
             continue
-        if disk.get("rm"):
-            continue
-        if disk.get("tran") == "usb":
-            continue
-        for child in disk.get("children") or []:
-            if child.get("parttype") != ESP_PARTTYPE:
+        disk_path = disk.get("path") or ""
+        disk_name = disk_path.rsplit("/", 1)[-1]
+        for node in scan(disk):
+            if node.get("type") == "part" and is_esp(node) and unclaimed_esp(node):
+                return True
+        for node in nodes:
+            if node.get("type") != "part" or not is_esp(node):
                 continue
-            child_path = os.path.realpath(child.get("path") or "")
-            if child_path in claimed:
+            if (node.get("pkname") or "") != disk_name:
                 continue
-            return True
+            if unclaimed_esp(node):
+                return True
     return False
 
 
@@ -606,8 +676,6 @@ def configure_template(
     device,
     extra_lines,
 ):
-    global TEMPLATE_PATH
-    TEMPLATE_PATH = clone
     global_storage = libcalamares.globalstorage
 
     region = global_storage.value("locationRegion")
@@ -1188,6 +1256,8 @@ def install():
                 )
             )
 
+        capture_template_identity(sanitize_template_source(template_url), staging)
+
         try:
             hostname = prepared_hostname(staging)
         except Exception as error:
@@ -1255,6 +1325,7 @@ def install():
             if keymap:
                 prepare_args += ["--keymap", keymap]
             run_script(prepare_repo, prepare_args)
+            capture_template_identity(template_path, template_path)
 
             libcalamares.job.setprogress(0.04)
             if regenerate_hardware:
@@ -1276,6 +1347,7 @@ def install():
             libcalamares.job.setprogress(0.02)
             run_command([cmd("pkexec"), cmd("cp"), "-a", template_path, staging])
             run_command([cmd("pkexec"), cmd("chmod"), "-R", "u+w", staging])
+            capture_template_identity(template_path, template_path)
 
             libcalamares.job.setprogress(0.04)
             hardware = generate_hardware(root)
@@ -1460,6 +1532,8 @@ def install():
     run_command([cmd("pkexec"), cmd("chown"), "-R", "1000:100", home])
 
     phase("collecting install report")
+    global FLAKE_REVISION
+    FLAKE_REVISION = git_revision(clone)
     write_install_report()
 
     phase("saving install log")

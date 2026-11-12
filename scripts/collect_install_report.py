@@ -86,18 +86,32 @@ def kernel_info(root: Path) -> dict:
     }
 
 
-def template_info(template: str | None) -> dict:
-    source = template or os.environ.get("OJUNY_TEMPLATE_SOURCE", "unknown")
-    revision = "unknown"
-    if template:
+def template_info(source: str | None, revision: str | None) -> dict:
+    if not source and not revision:
+        raise ValueError("template source and revision are both missing")
+    source = (source or "").strip() or "unknown"
+    revision = (revision or "").strip() or "unknown"
+    if revision == "unknown" and source != "unknown" and os.path.isdir(source):
         completed = subprocess.run(
-            ["git", "-C", template, "rev-parse", "HEAD"],
+            [
+                "git",
+                "-c",
+                "safe.directory={}".format(source),
+                "-C",
+                source,
+                "rev-parse",
+                "HEAD",
+            ],
             capture_output=True,
             text=True,
         )
         if completed.returncode == 0:
-            revision = completed.stdout.strip()
+            revision = completed.stdout.strip() or "unknown"
     return {"source": source, "revision": revision}
+
+
+def flake_info(revision: str | None) -> dict:
+    return {"revision": (revision or "").strip() or "unknown"}
 
 
 def iso_info(root: Path, variant: str) -> dict:
@@ -121,12 +135,19 @@ def phases(root: Path) -> dict:
     return result
 
 
-def collect(root: Path, template: str | None, variant: str) -> dict:
+def collect(
+    root: Path,
+    template_source: str | None,
+    template_revision: str | None,
+    variant: str,
+    flake_revision: str | None = None,
+) -> dict:
     return {
         "version": 1,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "iso": iso_info(root, variant),
-        "template": template_info(template),
+        "template": template_info(template_source, template_revision),
+        "flake": flake_info(flake_revision),
         "environment": {
             "cpu": cpu_info(root),
             "ram": ram_info(root),
@@ -144,6 +165,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="collect-install-report")
     parser.add_argument("--root", type=Path, default=Path("/"))
     parser.add_argument("--template", default=None)
+    parser.add_argument("--template-revision", default=None)
+    parser.add_argument("--flake-revision", default=None)
     parser.add_argument("--variant", default="unknown")
     parser.add_argument(
         "--output",
@@ -151,7 +174,13 @@ def main(argv: list[str] | None = None) -> int:
         default=Path("/tmp/ojuny-install-report.json"),
     )
     args = parser.parse_args(argv)
-    report = collect(args.root, args.template, args.variant)
+    report = collect(
+        args.root,
+        args.template,
+        args.template_revision,
+        args.variant,
+        flake_revision=args.flake_revision,
+    )
     args.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(f"wrote {args.output}")
     return 0

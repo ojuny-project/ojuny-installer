@@ -32,6 +32,8 @@ let
     calamares = calamaresPkg;
     inherit extensions;
   };
+
+  templateRevision = inputs.ojuny-template.rev or inputs.ojuny-template.dirtyRev or "unknown";
 in
 {
   imports = [
@@ -98,6 +100,8 @@ in
 
   system.nixos.distroName = "Ojuny";
   system.nixos.distroId = "ojuny";
+
+  environment.etc."ojuny/template-revision".text = templateRevision;
 
   ojuny.gpu = lib.mkForce "none";
   ojuny.plymouth.enable = lib.mkForce false;
