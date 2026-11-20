@@ -1284,11 +1284,11 @@
         "tinted-theming": "tinted-theming"
       },
       "locked": {
-        "lastModified": 1795173711,
-        "narHash": "sha256-7rDKYApkg4/v+RQVPH6I05qwBU29mPUDhbxLbXTw6QM=",
+        "lastModified": 1795185677,
+        "narHash": "sha256-DCsm3FZIfw5E954QsxpBL4TDAdu4iZeOafleOu1SF48=",
         "owner": "ojuny-project",
         "repo": "nix-settings-gui",
-        "rev": "439f334fa83f1c4f9a2b6af3cafca16f8c209799",
+        "rev": "84d9cba1b81d960a4713003d23e17a13a5c89696",
         "type": "github"
       },
       "original": {
@@ -1304,11 +1304,11 @@
         "tinted-theming": "tinted-theming_2"
       },
       "locked": {
-        "lastModified": 1795173711,
-        "narHash": "sha256-7rDKYApkg4/v+RQVPH6I05qwBU29mPUDhbxLbXTw6QM=",
+        "lastModified": 1795185677,
+        "narHash": "sha256-DCsm3FZIfw5E954QsxpBL4TDAdu4iZeOafleOu1SF48=",
         "owner": "ojuny-project",
         "repo": "nix-settings-gui",
-        "rev": "439f334fa83f1c4f9a2b6af3cafca16f8c209799",
+        "rev": "84d9cba1b81d960a4713003d23e17a13a5c89696",
         "type": "github"
       },
       "original": {
@@ -1745,11 +1745,11 @@
         "stylix": "stylix"
       },
       "locked": {
-        "lastModified": 1795173749,
-        "narHash": "sha256-uu2zdFM8hrwoRBP2GVVxcXpCf0jgI62bokPUE53DjLE=",
+        "lastModified": 1795185719,
+        "narHash": "sha256-LFYDH2LOIvIA15Y9sbUiMREIao7kNKu3NAaZ0wK7Wzo=",
         "owner": "ojuny-project",
         "repo": "ojuny-template",
-        "rev": "32a4b8c4a9df546536fa3fdb2b24ac920c4e7ebb",
+        "rev": "aec7abaf37114cb45911a0408f9e399f0aaa1d7e",
         "type": "github"
       },
       "original": {
@@ -1769,11 +1769,11 @@
         "tinted-theming": "tinted-theming_3"
       },
       "locked": {
-        "lastModified": 1795173716,
-        "narHash": "sha256-3C8LLQibI/SnrMTPLJi0a/KZdqVX0uZrwvzhhDC9Hdw=",
+        "lastModified": 1795185685,
+        "narHash": "sha256-6JY8hbpWSkeP5XKMDPooisY6b7LwkSMvyX0iFUtYYyw=",
         "owner": "ojuny-project",
         "repo": "ojuny-welcome",
-        "rev": "bb729f536b2835f2cb74f298a5a89502f8c89e31",
+        "rev": "cdc49bc4e676d1ba436e842265b6b22cd91b90f0",
         "type": "github"
       },
       "original": {
