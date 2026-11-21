@@ -1,4 +1,5 @@
 {
+  config,
   lib,
   pkgs,
   inputs,
@@ -40,6 +41,7 @@ in
     (modulesPath + "/installer/cd-dvd/installation-cd-graphical-base.nix")
     ./live-media-eject.nix
     ./debug.nix
+    ./preload.nix
 
     inputs.ojuny-template.modules.nixos.system-graphics
     inputs.ojuny-template.modules.nixos.system-facter
@@ -109,6 +111,7 @@ in
   isoImage.edition = lib.mkForce "installer";
   isoImage.volumeID = lib.mkForce "OJUNY_INSTALLER";
   image.baseName = lib.mkForce "ojuny-installer";
+  isoImage.storeContents = lib.mkAfter config.ojuny.prebuildPaths;
 
   desktop.ojuny.mango.execOnce = lib.mkForce [
     "dms run"

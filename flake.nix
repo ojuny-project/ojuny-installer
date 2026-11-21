@@ -50,25 +50,37 @@
 
       iso = nixpkgs.lib.nixosSystem {
         inherit system;
-        specialArgs = { inherit inputs; };
+        specialArgs = {
+          inherit inputs;
+          target = fullTarget;
+        };
         modules = [ ./nixos/iso.nix ];
       };
 
       discoveryIso = nixpkgs.lib.nixosSystem {
         inherit system;
-        specialArgs = { inherit inputs; };
+        specialArgs = {
+          inherit inputs;
+          target = fullTarget;
+        };
         modules = [ ./nixos/discovery-iso.nix ];
       };
 
       unattended = lib.nixosSystem {
         inherit system;
-        specialArgs = { inherit inputs settings; };
+        specialArgs = {
+          inherit inputs settings;
+          target = fullTarget;
+        };
         modules = [ ./nixos/unattended.nix ];
       };
 
       discoveryUnattended = lib.nixosSystem {
         inherit system;
-        specialArgs = { inherit inputs settings; };
+        specialArgs = {
+          inherit inputs settings;
+          target = fullTarget;
+        };
         modules = [ ./nixos/discovery-unattended.nix ];
       };
 

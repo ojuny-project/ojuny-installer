@@ -1393,7 +1393,7 @@ def install():
         except Exception as error:
             append_log("could not measure the install closure: {}".format(error))
     append_log("install items={}".format(total_items))
-    progress = InstallProgress(total_items)
+    progress = InstallProgress(total_items, hold_until_expected=not offline_mode)
     progress.start()
     status = "installing NixOS"
     libcalamares.job.setprogress(PROGRESS_ITEMS_START)

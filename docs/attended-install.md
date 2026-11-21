@@ -63,14 +63,16 @@ total before `nixos-install` starts and then reports completed items.
   activity for an install item increments the completed count. The aggregate
   `CopyPaths` activity is not used because it also counts derivations and flake
   inputs.
-- The flake input loading phase does not move the bar. The bar reaches 20
-  percent when the item phase starts and stays there until the first install
-  item completes.
+- The flake input loading phase does not move the bar. Online installs keep the
+  bar at 20 percent until Nix reports the expected build or copy work, then the
+  item phase counts from that total. Offline preload starts from its precomputed
+  total.
 - Item work maps to `0.20-0.95` of the Calamares job, which gives the actual
   install 75 percent of the bar. The remaining five percent are held for the
   bootloader, generated configuration and cleanup.
-- If the completed count exceeds the precomputed total, the total grows and the
-  displayed percentage does not drop.
+- The total grows as soon as Nix reports expected build or copy work, and the
+  precomputed closure total is kept as a lower bound. The displayed percentage
+  never drops, so the bar does not run ahead on copies and then fall back.
 
 The percentage is item completion, not elapsed time. A single long build or a
 single large store path can hold the bar at one item until that item finishes.

@@ -161,6 +161,36 @@ class InstallProgressTest(unittest.TestCase):
         self.assertEqual(tracker.total, 10)
         self.assertEqual(tracker.fraction, 0.5)
 
+    def test_total_grows_before_precomputed_total_is_exhausted(self):
+        tracker = InstallProgress(100)
+        tracker.start()
+        tracker.handle(start(1, 104))
+        tracker.handle(progress(1, 90, 200))
+        self.assertEqual(tracker.total, 200)
+        self.assertEqual(tracker.fraction, 0.45)
+
+    def test_fraction_does_not_drop_when_later_work_arrives(self):
+        tracker = InstallProgress(100)
+        tracker.start()
+        tracker.handle(start(1, 104))
+        tracker.handle(progress(1, 90, 100))
+        self.assertEqual(tracker.fraction, 0.9)
+        tracker.handle(start(2, 104))
+        tracker.handle(progress(2, 0, 100))
+        self.assertEqual(tracker.total, 200)
+        self.assertEqual(tracker.fraction, 0.9)
+
+    def test_hold_keeps_start_until_expected_work_is_known(self):
+        tracker = InstallProgress(10, hold_until_expected=True)
+        tracker.start()
+        tracker.handle(copy_start(2, "/nix/store/abc-hello"))
+        tracker.handle(stop(2))
+        self.assertEqual(tracker.done, 1)
+        self.assertEqual(tracker.fraction, 0.0)
+        tracker.handle(start(1, 104))
+        tracker.handle(progress(1, 9, 10))
+        self.assertGreater(tracker.fraction, 0.0)
+
     def test_total_grows_when_precomputed_total_is_exhausted(self):
         tracker = InstallProgress(5)
         tracker.start()

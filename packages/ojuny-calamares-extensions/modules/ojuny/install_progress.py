@@ -52,7 +52,7 @@ def measure_closure_items(run, store, staging, hostname):
 class InstallProgress:
     """Track installed store items against a precomputed closure total."""
 
-    def __init__(self, total=0):
+    def __init__(self, total=0, hold_until_expected=False):
         self._total = max(0, int(total))
         self._done = 0
         self._fraction = 0.0
@@ -64,6 +64,8 @@ class InstallProgress:
         self._copies = {}
         self._build_baseline = {}
         self._built_items = 0
+        self._hold_until_expected = hold_until_expected
+        self._expected_known = False
         self.log_messages = []
 
     @property
@@ -82,6 +84,7 @@ class InstallProgress:
         self._active = True
         self._done = 0
         self._fraction = 0.0
+        self._expected_known = False
         self._copy_paths.clear()
         self._copy_items = 0
         self._build_baseline = {
@@ -167,17 +170,18 @@ class InstallProgress:
             0, copies_expected - copies_done
         )
 
-        grew = False
-        if self._done >= self._total and remaining > 0:
-            self._total = self._done + remaining
-            grew = True
-        elif self._done > self._total:
-            self._total = self._done
-            grew = True
+        if builds_expected > 0 or copies_expected > 0:
+            self._expected_known = True
+
+        known = self._done + remaining
+        if known > self._total:
+            self._total = known
+
+        if self._hold_until_expected and not self._expected_known:
+            if self._total == 0 or self._done < self._total:
+                return
+            self._expected_known = True
 
         if self._total > 0:
             candidate = min(1.0, self._done / self._total)
-            if grew:
-                self._fraction = candidate
-            elif candidate > self._fraction:
-                self._fraction = candidate
+            self._fraction = max(self._fraction, candidate)

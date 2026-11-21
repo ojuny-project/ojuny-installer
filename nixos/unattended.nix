@@ -14,11 +14,13 @@
     (modulesPath + "/profiles/qemu-guest.nix")
     ./live-media-eject.nix
     ./unattended-common.nix
+    ./preload.nix
   ];
 
   isoImage.edition = "unattended";
   image.baseName = lib.mkForce "ojuny-unattended";
   isoImage.makeBiosBootable = true;
+  isoImage.storeContents = lib.mkAfter config.ojuny.prebuildPaths;
 
   systemd.services.ojuny-unattended-install = {
     after = [ "network-online.target" ];

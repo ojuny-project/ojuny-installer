@@ -82,6 +82,38 @@ let
     hostname
     removeReferencesTo
   ];
+
+  isPackage = value: builtins.isAttrs value && (value.type or "") == "derivation";
+
+  ojunyNamePrefixes = [
+    "dank"
+    "dux"
+    "ojuny"
+    "mango"
+    "dms"
+    "quickshell"
+    "nix-settings-gui"
+    "nix-shell-gui"
+    "simple-nix-update-gui"
+    "nix-regedit"
+    "nix-cleaner"
+    "nix-cache-discovery"
+    "nom-cache-discovery"
+    "raven"
+  ];
+
+  homeUsers = (target.config.home-manager or { }).users or { };
+
+  ojunyPackages =
+    builtins.filter
+      (
+        package:
+        isPackage package && lib.any (prefix: lib.hasPrefix prefix (package.name or "")) ojunyNamePrefixes
+      )
+      (
+        target.config.environment.systemPackages
+        ++ lib.concatMap (user: user.home.packages) (lib.attrValues homeUsers)
+      );
 in
 {
   options.ojuny.preloadPaths = lib.mkOption {
@@ -90,9 +122,17 @@ in
     description = "Store paths preloaded into the offline ISO for install-time builds.";
   };
 
+  options.ojuny.prebuildPaths = lib.mkOption {
+    type = lib.types.listOf lib.types.path;
+    default = [ ];
+    description = "Ojuny package store paths preloaded into every ISO so installs copy them instead of building from source.";
+  };
+
   config.ojuny.preloadPaths = lib.unique (
     (if generatedPaths != [ ] then map withContext generatedPaths else [ ])
     ++ lib.concatMap outputsOf packages
     ++ [ target.pkgs.haskellPackages.hostname.src ]
   );
+
+  config.ojuny.prebuildPaths = lib.unique (lib.concatMap outputsOf ojunyPackages);
 }
