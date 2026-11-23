@@ -5,6 +5,7 @@ import os
 import re
 import select
 import shutil
+import signal
 import stat
 import subprocess
 import sys
@@ -13,6 +14,12 @@ import traceback
 from pathlib import Path
 
 import flake_structure
+from install_guard import (
+    GuardFailure,
+    ResourceGuard,
+    estimate_install_bytes,
+    signal_tree,
+)
 
 SETTINGS_PATH = "/etc/ojuny/settings.json"
 # The unattended ISO carries a copy of the template at this path. It is the
@@ -123,18 +130,58 @@ def output(command):
     return subprocess.check_output(command, text=True).strip()
 
 
-def run_logged(command):
+def terminate(process):
+    for sig in (signal.SIGTERM, signal.SIGKILL):
+        signal_tree(process.pid, sig)
+        try:
+            process.wait(timeout=20)
+            return
+        except subprocess.TimeoutExpired:
+            continue
+
+
+def run_logged(command, guard=None):
     log("+ " + " ".join(str(part) for part in command))
     process = subprocess.Popen(
         command,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1,
+        bufsize=0,
     )
-    for line in process.stdout:
-        print(line, end="", flush=True)
-        append_log(line.rstrip("\n"))
+    if guard is not None:
+        guard.start(process.pid)
+    fd = process.stdout.fileno()
+    buffer = ""
+    tail = []
+    while True:
+        ready, _, _ = select.select([fd], [], [], 5)
+        if ready:
+            chunk = os.read(fd, 65536)
+            if not chunk:
+                break
+            buffer += chunk.decode("utf-8", "replace")
+            while "\n" in buffer:
+                line, buffer = buffer.split("\n", 1)
+                print(line, flush=True)
+                append_log(line)
+                tail.append(line)
+                del tail[:-40]
+                if guard is not None:
+                    guard.note_activity()
+
+        if guard is not None:
+            reason = guard.check()
+            if reason:
+                terminate(process)
+                append_log("resource guard: {}".format(reason))
+                message = reason
+                if tail:
+                    message += "\n\nLast output:\n" + "\n".join(tail)
+                raise RuntimeError(message)
+
+    if buffer.strip():
+        print(buffer, flush=True)
+        append_log(buffer)
     code = process.wait()
     if code != 0:
         raise subprocess.CalledProcessError(code, command)
@@ -1064,25 +1111,62 @@ def install():
         phase("preloading offline store")
         preload_store_paths(MOUNT)
 
-    phase("installing NixOS from {}#{}".format(target, host))
+    guard = ResourceGuard(MOUNT)
+    try:
+        guard.preflight(estimate_install_bytes())
+    except GuardFailure as error:
+        append_log("resource preflight failed: {}".format(error))
+        raise RuntimeError("cannot start the install: {}".format(error))
+    append_log("resource preflight: {}".format(guard.describe()))
+
+    scratch = os.path.join(MOUNT, "var/tmp/ojuny-install")
+    os.makedirs(scratch, exist_ok=True)
+    out_link = os.path.join(scratch, "toplevel")
+
+    phase("building the target system")
+    build_command = [
+        "env",
+        "TMPDIR={}".format(scratch),
+        "XDG_CACHE_HOME={}".format(os.path.join(scratch, "cache")),
+        "nix",
+        "--extra-experimental-features",
+        "nix-command flakes",
+        "build",
+        "--store",
+        MOUNT,
+        "--eval-store",
+        MOUNT,
+        "--option",
+        "build-dir",
+        "/nix/var/nix/builds",
+        "--out-link",
+        out_link,
+        '{}#nixosConfigurations."{}".config.system.build.toplevel'.format(target, host),
+    ]
+    offline_rewrite = rewrite_offline_inputs(target) if OFFLINE else None
+    try:
+        run_logged(build_command, guard=guard)
+    finally:
+        restore_offline_inputs(offline_rewrite)
+
+    system_path = os.readlink(out_link)
+    if not os.path.isabs(system_path):
+        raise RuntimeError("unexpected out-link target: {}".format(system_path))
+    append_log("system={}".format(system_path))
+
+    phase("installing NixOS from {}".format(system_path))
     install_command = [
         "nixos-install",
         "--no-root-passwd",
         "--root",
         MOUNT,
-        "--flake",
-        "{}#{}".format(target, host),
+        "--system",
+        system_path,
         "--option",
         "build-dir",
         "/nix/var/nix/builds",
     ]
-    if OFFLINE:
-        install_command += ["--option", "substituters", "auto?trusted=1"]
-    offline_rewrite = rewrite_offline_inputs(target) if OFFLINE else None
-    try:
-        run_logged(install_command)
-    finally:
-        restore_offline_inputs(offline_rewrite)
+    run_logged(install_command, guard=guard)
     phase("nixos-install finished")
 
     shell = detect_shell(target)

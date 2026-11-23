@@ -2,8 +2,10 @@ import configparser
 import json
 import os
 import re
+import select
 import shlex
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -16,6 +18,7 @@ import libcalamares
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import flake_structure
+from install_guard import GuardFailure, ResourceGuard, estimate_install_bytes, signal_tree
 from install_progress import InstallProgress, measure_closure_items
 
 
@@ -35,6 +38,7 @@ FLAKE_REVISION = None
 LOG_SAVED = False
 
 PROGRESS_ITEMS_START = 0.20
+PROGRESS_BUILD_END = 0.93
 PROGRESS_ITEMS_END = 0.95
 
 ESP_PARTTYPE = "c12a7328-f81f-11d2-ba4b-00a0c93ec93b"
@@ -189,21 +193,65 @@ def run_command_output(cmd, input=None):
     return result.stdout
 
 
-def stream_with_progress(command, progress, start, end, label):
+def stream_with_progress(command, progress, start, end, label, guard=None):
+    global status
+
     process = subprocess.Popen(
         command,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1,
+        bufsize=0,
     )
     output = []
-    for line in process.stdout:
+    cursor = 0
+    last_heartbeat = time.monotonic()
+    fd = process.stdout.fileno()
+
+    if guard is not None:
+        guard.start(process.pid)
+
+    def set_progress():
+        libcalamares.job.setprogress(start + progress.fraction * (end - start))
+
+    def terminate():
+        for sig in (signal.SIGTERM, signal.SIGKILL):
+            signal_tree(process.pid, sig)
+            try:
+                process.wait(timeout=20)
+                return
+            except subprocess.TimeoutExpired:
+                continue
+
+    def abort(reason):
+        terminate()
+        tail = "\n".join(output[-40:])
+        append_log("{}: {}".format(label, reason))
+        message = "Ojuny install stopped: {}".format(reason)
+        if tail:
+            message += "\n\nLast output:\n{}".format(tail)
+        raise GuardFailure(message)
+
+    def heartbeat():
+        nonlocal cursor
+        text, cursor = progress.status_text(cursor)
+        status = text
+        libcalamares.utils.debug("{}: {}".format(label, text))
+        append_log("{}: {}".format(label, text))
+        set_progress()
+        if guard is not None:
+            reason = guard.check()
+            if reason:
+                abort(reason)
+
+    def handle_line(line):
+        if guard is not None:
+            guard.note_activity()
         was_json = progress.handle(line)
         if not was_json:
             text = line.strip()
             if text:
                 output.append(text)
+                progress.note_build(text)
                 libcalamares.utils.debug("{}: {}".format(label, text))
                 append_log("{}: {}".format(label, text))
 
@@ -215,10 +263,33 @@ def stream_with_progress(command, progress, start, end, label):
 
         if len(output) > 400:
             del output[:-400]
+        set_progress()
 
-        libcalamares.job.setprogress(
-            start + progress.fraction * (end - start)
-        )
+    buffer = b""
+    while True:
+        now = time.monotonic()
+        if now - last_heartbeat >= 5:
+            heartbeat()
+            last_heartbeat = now
+
+        timeout = max(0.0, 5 - (time.monotonic() - last_heartbeat))
+        ready, _, _ = select.select([fd], [], [], timeout)
+        if ready:
+            chunk = os.read(fd, 65536)
+            if not chunk:
+                break
+            buffer += chunk
+            while b"\n" in buffer:
+                raw, buffer = buffer.split(b"\n", 1)
+                handle_line(raw.decode("utf-8", "replace"))
+
+        now = time.monotonic()
+        if now - last_heartbeat >= 5:
+            heartbeat()
+            last_heartbeat = now
+
+    if buffer.strip():
+        handle_line(buffer.decode("utf-8", "replace"))
 
     exit_code = process.wait()
     return exit_code, output
@@ -249,12 +320,16 @@ def unobscure(value):
     )
 
 
-def proxy_env():
+def proxy_env(scratch=None):
     result = []
     for name in ("http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY"):
         value = os.environ.get(name)
         if value:
             result.append("{name}={value}".format(name=name, value=value))
+    if scratch:
+        result.append("TMPDIR={}".format(scratch))
+        result.append("XDG_CACHE_HOME={}".format(os.path.join(scratch, "cache")))
+        result.append("XDG_STATE_HOME={}".format(os.path.join(scratch, "state")))
     if result:
         result.insert(0, cmd("env"))
     return result
@@ -1184,7 +1259,22 @@ def install():
     home = os.path.join(root, "home", username)
     clone = os.path.join(home, clone_relative)
     runtime_clone = os.path.join("/home", username, clone_relative)
-    staging = tempfile.mkdtemp(prefix="ojuny-flake-")
+    scratch = os.path.join(root, "var/tmp/ojuny-install")
+    run_command(
+        [
+            cmd("pkexec"),
+            cmd("install"),
+            "-d",
+            "-m",
+            "0700",
+            "-o",
+            str(os.getuid()),
+            "-g",
+            str(os.getgid()),
+            scratch,
+        ]
+    )
+    staging = tempfile.mkdtemp(prefix="ojuny-flake-", dir=scratch)
 
     shell = "zsh"
     runtime_shell = global_storage.value("userShell") or ""
@@ -1388,11 +1478,19 @@ def install():
     else:
         try:
             total_items = measure_closure_items(
-                run_command_output, root, staging, hostname
+                run_command_output, root, staging, hostname, env=proxy_env(scratch)
             )
         except Exception as error:
             append_log("could not measure the install closure: {}".format(error))
     append_log("install items={}".format(total_items))
+    guard = ResourceGuard(root)
+    try:
+        guard.preflight(estimate_install_bytes(total_items))
+    except GuardFailure as error:
+        append_log("resource preflight failed: {}".format(error))
+        raise RuntimeError("Ojuny cannot start the install: {}".format(error))
+    append_log("resource preflight: {}".format(guard.describe()))
+
     progress = InstallProgress(total_items, hold_until_expected=not offline_mode)
     progress.start()
     status = "installing NixOS"
@@ -1419,41 +1517,83 @@ def install():
         for line in snapshot.stdout.splitlines():
             append_log("  " + line)
 
-    status = "installing NixOS"
-    phase("starting nixos-install")
+    status = "building the target system"
+    phase("starting nix build")
     run_command([cmd("pkexec"), cmd("chmod"), "755", root])
-    command = [cmd("pkexec")] + proxy_env() + [
-        cmd("nixos-install"),
-        "--no-root-passwd",
+    out_link = os.path.join(scratch, "toplevel")
+    build_command = [cmd("pkexec")] + proxy_env(scratch) + [
+        cmd("nix"),
+        "--extra-experimental-features",
+        "nix-command flakes",
+        "build",
         "--log-format",
         "internal-json",
-        "--root",
+        "--store",
         root,
-        "--flake",
-        "{staging}#{hostname}".format(staging=staging, hostname=hostname),
+        "--eval-store",
+        root,
         "--option",
         "build-dir",
         "/nix/var/nix/builds",
+        "--out-link",
+        out_link,
+        '{staging}#nixosConfigurations."{hostname}".config.system.build.toplevel'.format(
+            staging=staging, hostname=hostname
+        ),
     ]
-    if offline_mode:
-        command += ["--option", "substituters", "auto?trusted=1"]
 
     offline_rewrite = None
     if offline_mode:
         offline_rewrite = rewrite_offline_inputs(staging)
 
     exit_code, output = stream_with_progress(
-        command,
+        build_command,
         progress,
         PROGRESS_ITEMS_START,
-        PROGRESS_ITEMS_END,
-        "nixos-install",
+        PROGRESS_BUILD_END,
+        "nix build",
+        guard=guard,
     )
     restore_offline_inputs(offline_rewrite)
+    if exit_code != 0:
+        raise RuntimeError("building the target system failed:\n{}".format("\n".join(output)))
+
+    system_path = os.readlink(out_link)
+    if not os.path.isabs(system_path):
+        raise RuntimeError("unexpected out-link target: {}".format(system_path))
+    append_log("system={}".format(system_path))
+
+    status = "installing NixOS"
+    phase("starting nixos-install")
+    command = [cmd("pkexec")] + proxy_env() + [
+        cmd("nixos-install"),
+        "--no-root-passwd",
+        "--root",
+        root,
+        "--system",
+        system_path,
+        "--option",
+        "build-dir",
+        "/nix/var/nix/builds",
+    ]
+
+    exit_code, output = stream_with_progress(
+        command,
+        progress,
+        PROGRESS_BUILD_END,
+        PROGRESS_ITEMS_END,
+        "nixos-install",
+        guard=guard,
+    )
     if exit_code != 0:
         raise RuntimeError("nixos-install failed:\n{}".format("\n".join(output)))
 
     phase("nixos-install finished")
+
+    try:
+        run_command([cmd("pkexec"), cmd("rm"), "-rf", scratch])
+    except Exception as error:
+        append_log("could not remove {}: {}".format(scratch, error))
 
     if bootorder and previous_boot and os.path.exists(previous_boot):
         try:

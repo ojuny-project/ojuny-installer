@@ -316,6 +316,14 @@
                   cd ${./.}
                   cmp packages/ojuny-calamares-extensions/modules/ojuny/flake_structure.py nixos/flake_structure.py
                   python3 tests/check-fixed-paths.py
+                  grep -q 'from install_guard import' packages/ojuny-calamares-extensions/modules/ojuny/main.py
+                  grep -q 'install_guard.py' nixos/unattended-common.nix
+                  grep -q 'build-dir' packages/ojuny-calamares-extensions/modules/ojuny/main.py
+                  grep -q 'build-dir' nixos/unattended-install.py
+                  grep -q -- '--eval-store' packages/ojuny-calamares-extensions/modules/ojuny/main.py
+                  grep -q -- '--eval-store' nixos/unattended-install.py
+                  grep -q -- '--system' packages/ojuny-calamares-extensions/modules/ojuny/main.py
+                  grep -q -- '--system' nixos/unattended-install.py
                   touch $out
                 '';
 

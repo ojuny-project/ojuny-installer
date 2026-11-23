@@ -67,15 +67,64 @@ total before `nixos-install` starts and then reports completed items.
   bar at 20 percent until Nix reports the expected build or copy work, then the
   item phase counts from that total. Offline preload starts from its precomputed
   total.
-- Item work maps to `0.20-0.95` of the Calamares job, which gives the actual
-  install 75 percent of the bar. The remaining five percent are held for the
-  bootloader, generated configuration and cleanup.
+- Item work maps to `0.20-0.93` of the Calamares job for the target system
+  build, and `0.93-0.95` for the `nixos-install` profile and bootloader step.
+  The remaining five percent are held for the generated configuration and
+  cleanup.
 - The total grows as soon as Nix reports expected build or copy work, and the
   precomputed closure total is kept as a lower bound. The displayed percentage
   never drops, so the bar does not run ahead on copies and then fall back.
+- The Calamares status line rotates every five seconds through active copy and
+  build activities and shows the elapsed time for each. The install log gets
+  the same heartbeat every five seconds, so a single long build leaves visible
+  activity even though the item percentage is held.
+- The last build log line is not streamed. The status and heartbeat identify the
+  active derivation without flooding the log with compiler output.
 
 The percentage is item completion, not elapsed time. A single long build or a
 single large store path can hold the bar at one item until that item finishes.
+
+## Resource guard
+
+Any template can require a build larger than the live machine. The installer
+does not assume a package list or a build type; it enforces a resource contract
+around whatever the template's closure needs.
+
+Where install writes go:
+
+- The installer evaluates and builds the target system itself with
+  `nix build --store <root> --eval-store <root>`. Flake inputs, source trees,
+  IFD outputs and build results all land in the target store on the target disk.
+- `nixos-install` is then run with `--system <toplevel>`, so it does not
+  evaluate or build anything. It only sets the system profile and runs the
+  bootloader step.
+- The staging flake is created under `<root>/var/tmp/ojuny-install` instead of
+  `/tmp`, so it is on the target disk.
+- `TMPDIR`, `XDG_CACHE_HOME` and `XDG_STATE_HOME` for the Nix process point at
+  that same scratch directory.
+
+The live RAM layer therefore grows with the live session only, not with the
+template. A template that pulls a large input tree or builds a large artifact
+uses the target disk, not the installer's RAM.
+
+Before the build starts, and before the offline preload, the guard checks:
+
+- free space on the target filesystem against a floor plus an estimate built
+  from the closure item count (8 MiB per missing item, 4 GiB scratch budget),
+  with 1 GiB kept in reserve,
+- free space on the live filesystem (256 MiB reserve),
+- `MemAvailable` (64 MiB floor).
+
+During `nixos-install`, the five second heartbeat samples the same values and
+counts live descendants of the Nix process. The install aborts with a blocking
+error when the target reserve is breached, the live layer reserve is breached,
+memory falls below the floor, or there has been no output and no live build
+process for 300 seconds. The last case is the dead builder that leaves the Nix
+client polling forever.
+
+The abort terminates the process group, writes the reason and the last 40
+output lines to `/tmp/ojuny-install.log`, and raises an error that Calamares
+shows instead of holding at a percentage.
 
 ## Status
 

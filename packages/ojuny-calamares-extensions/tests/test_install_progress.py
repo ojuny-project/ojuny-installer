@@ -74,6 +74,28 @@ class MeasureClosureItemsTest(unittest.TestCase):
         self.assertIn("/tmp/root", calls[1])
         self.assertIn("/nix/store/abc-system.drv", calls[1])
 
+    def test_env_prefix_and_eval_store_are_applied(self):
+        calls = []
+
+        def run(command):
+            calls.append(command)
+            if "eval" in command:
+                return "/nix/store/abc-system.drv\n"
+            return "/nix/store/a\n"
+
+        measure_closure_items(
+            run,
+            "/tmp/root",
+            "/tmp/flake",
+            "ojuny",
+            env=["env", "TMPDIR=/tmp/scratch"],
+        )
+        self.assertEqual(calls[0][0], "env")
+        self.assertIn("TMPDIR=/tmp/scratch", calls[0])
+        self.assertIn("--eval-store", calls[0])
+        self.assertIn("/tmp/root", calls[0])
+        self.assertEqual(calls[1][0], "env")
+
     def test_rejects_empty_derivation(self):
         with self.assertRaises(RuntimeError):
             measure_closure_items(
@@ -233,6 +255,42 @@ class InstallProgressTest(unittest.TestCase):
         tracker = InstallProgress(1)
         tracker.handle(copy_start(2, "/nix/store/abc-hello"))
         self.assertIn("copying path '/nix/store/abc-hello", tracker.log_messages[0])
+
+    def test_active_status_rotates_between_copy_and_build(self):
+        tracker = InstallProgress(10)
+        tracker.start()
+        tracker.handle(copy_start(2, "/nix/store/abc-firefox-1.0"))
+        tracker.note_build("building '/nix/store/abc-linux-6.18.60.drv'")
+
+        text, cursor = tracker.status_text(0)
+        self.assertIn("Downloading", text)
+        self.assertIn("firefox-1.0", text)
+
+        text, cursor = tracker.status_text(cursor)
+        self.assertIn("Building", text)
+        self.assertIn("linux-6.18.60", text)
+
+    def test_stopped_copy_is_removed_from_status(self):
+        tracker = InstallProgress(10)
+        tracker.start()
+        tracker.handle(copy_start(2, "/nix/store/abc-firefox-1.0"))
+        tracker.handle(stop(2))
+        text, _ = tracker.status_text(0)
+        self.assertNotIn("Downloading", text)
+        self.assertIn("Installing NixOS", text)
+
+    def test_completed_build_is_removed_from_status(self):
+        tracker = InstallProgress(10)
+        tracker.start()
+        tracker.note_build("building '/nix/store/abc-linux-6.18.60.drv'")
+        tracker.handle(start(1, 104))
+        tracker.handle(progress(1, 0, 1))
+        text, _ = tracker.status_text(0)
+        self.assertIn("linux-6.18.60", text)
+
+        tracker.handle(progress(1, 1, 1))
+        text, _ = tracker.status_text(0)
+        self.assertNotIn("linux-6.18.60", text)
 
 
 class MainImportTest(unittest.TestCase):
