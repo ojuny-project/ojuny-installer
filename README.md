@@ -121,4 +121,3 @@ Report issues on GitHub. A patch includes the change, a passing `nix flake check
 ## License
 
 GPL-3.0. See [LICENSE](LICENSE). Built on NixOS, nixpkgs and Calamares, and installs [ojuny-template](https://github.com/ojuny-project/ojuny-template).
-
