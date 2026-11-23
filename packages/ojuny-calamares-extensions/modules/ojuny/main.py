@@ -1546,15 +1546,17 @@ def install():
     if offline_mode:
         offline_rewrite = rewrite_offline_inputs(staging)
 
-    exit_code, output = stream_with_progress(
-        build_command,
-        progress,
-        PROGRESS_ITEMS_START,
-        PROGRESS_BUILD_END,
-        "nix build",
-        guard=guard,
-    )
-    restore_offline_inputs(offline_rewrite)
+    try:
+        exit_code, output = stream_with_progress(
+            build_command,
+            progress,
+            PROGRESS_ITEMS_START,
+            PROGRESS_BUILD_END,
+            "nix build",
+            guard=guard,
+        )
+    finally:
+        restore_offline_inputs(offline_rewrite)
     if exit_code != 0:
         raise RuntimeError("building the target system failed:\n{}".format("\n".join(output)))
 
