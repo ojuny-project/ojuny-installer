@@ -1,0 +1,73 @@
+--- a/src/libcalamares/pybind11/PythonJob.cpp
++++ b/src/libcalamares/pybind11/PythonJob.cpp
+@@ -19,6 +19,7 @@
+ 
+ #include <QDir>
+ #include <QFileInfo>
++#include <QMutex>
+ #include <QString>
+ 
+ #ifdef WITH_PYBIND11
+@@ -199,6 +200,7 @@
+     QVariantMap configurationMap;  // The module configuration
+ 
+     QString description;  // Obtained from the Python code
++    QMutex descriptionMutex;
+ };
+ 
+ Job::Job( const QString& scriptFile,
+@@ -222,6 +224,7 @@
+ Job::prettyStatusMessage() const
+ {
+     // The description is updated when progress is reported, see emitProgress()
++    QMutexLocker locker( &m_d->descriptionMutex );
+     if ( m_d->description.isEmpty() )
+     {
+         return tr( "Running %1 operation." ).arg( prettyName() );
+@@ -332,7 +335,10 @@
+     }
+ 
+     auto scope = py::module_::import( "__main__" ).attr( "__dict__" );
+-    m_d->description = getPrettyNameFromScope( scope );
++    {
++        QMutexLocker locker( &m_d->descriptionMutex );
++        m_d->description = getPrettyNameFromScope( scope );
++    }
+ 
+     Q_EMIT progress( 0 );
+     static constexpr char key_run[] = "run";
+@@ -404,7 +410,33 @@
+ void
+ Job::emitProgress( double progressValue )
+ {
+-    // TODO: update prettyname
++    if ( Py_IsInitialized() )
++    {
++        py::gil_scoped_acquire gil;
++        try
++        {
++            auto scope = py::module_::import( "__main__" ).attr( "__dict__" );
++            if ( scope.contains( "pretty_status_message" ) )
++            {
++                const py::object func = scope[ "pretty_status_message" ];
++                const QString message = QString::fromUtf8( func().cast< std::string >().c_str() ).trimmed();
++                if ( !message.isEmpty() )
++                {
++                    QMutexLocker locker( &m_d->descriptionMutex );
++                    m_d->description = message;
++                }
++            }
++        }
++        catch ( const py::error_already_set& e )
++        {
++            cWarning() << "Error in pretty_status_message:" << e.what();
++            PyErr_Clear();
++        }
++        catch ( const py::cast_error& )
++        {
++            PyErr_Clear();
++        }
++    }
+     emit progress( progressValue );
+ }
+ 

@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import flake_structure
 from install_guard import GuardFailure, ResourceGuard, estimate_install_bytes, signal_tree
-from install_progress import InstallProgress, measure_closure_items
+from install_progress import InstallProgress, measure_closure_items, measure_realized_items
 
 
 def pretty_name():
@@ -235,8 +235,6 @@ def stream_with_progress(command, progress, start, end, label, guard=None):
         nonlocal cursor
         text, cursor = progress.status_text(cursor)
         status = text
-        libcalamares.utils.debug("{}: {}".format(label, text))
-        append_log("{}: {}".format(label, text))
         set_progress()
         if guard is not None:
             reason = guard.check()
@@ -1480,8 +1478,8 @@ def install():
             total_items = measure_closure_items(
                 run_command_output, root, staging, hostname, env=proxy_env(scratch)
             )
-        except Exception as error:
-            append_log("could not measure the install closure: {}".format(error))
+        except Exception:
+            total_items = 0
     append_log("install items={}".format(total_items))
     guard = ResourceGuard(root)
     try:
@@ -1491,7 +1489,7 @@ def install():
         raise RuntimeError("Ojuny cannot start the install: {}".format(error))
     append_log("resource preflight: {}".format(guard.describe()))
 
-    progress = InstallProgress(total_items, hold_until_expected=not offline_mode)
+    progress = InstallProgress(total_items)
     progress.start()
     status = "installing NixOS"
     libcalamares.job.setprogress(PROGRESS_ITEMS_START)
@@ -1521,25 +1519,14 @@ def install():
     phase("starting nix build")
     run_command([cmd("pkexec"), cmd("chmod"), "755", root])
     out_link = os.path.join(scratch, "toplevel")
-    build_command = [cmd("pkexec")] + proxy_env(scratch) + [
-        cmd("nix"),
-        "--extra-experimental-features",
-        "nix-command flakes",
-        "build",
-        "--log-format",
-        "internal-json",
-        "--store",
-        root,
-        "--eval-store",
-        root,
-        "--option",
-        "build-dir",
-        "/nix/var/nix/builds",
-        "--out-link",
-        out_link,
-        '{staging}#nixosConfigurations."{hostname}".config.system.build.toplevel'.format(
-            staging=staging, hostname=hostname
-        ),
+    installable = (
+        '{staging}#nixosConfigurations."{hostname}".config.system.build.toplevel'
+    ).format(staging=staging, hostname=hostname)
+    eval_store = os.path.join(scratch, "eval-store")
+    routes = [
+        ["--eval-store", root],
+        ["--eval-store", eval_store],
+        [],
     ]
 
     offline_rewrite = None
@@ -1547,23 +1534,54 @@ def install():
         offline_rewrite = rewrite_offline_inputs(staging)
 
     try:
-        exit_code, output = stream_with_progress(
-            build_command,
-            progress,
-            PROGRESS_ITEMS_START,
-            PROGRESS_BUILD_END,
-            "nix build",
-            guard=guard,
-        )
+        for index, eval_args in enumerate(routes):
+            if eval_args and eval_args[1] == eval_store:
+                os.makedirs(eval_store, exist_ok=True)
+            build_command = [cmd("pkexec")] + proxy_env(scratch) + [
+                cmd("nix"),
+                "--extra-experimental-features",
+                "nix-command flakes",
+                "build",
+                "--log-format",
+                "internal-json",
+                "--store",
+                root,
+            ] + eval_args + [
+                "--option",
+                "build-dir",
+                "/nix/var/nix/builds",
+                "--out-link",
+                out_link,
+                installable,
+            ]
+            exit_code, output = stream_with_progress(
+                build_command,
+                progress,
+                PROGRESS_ITEMS_START,
+                PROGRESS_BUILD_END,
+                "nix build",
+                guard=guard,
+            )
+            if exit_code == 0:
+                break
+            if exit_code >= 0 or index == len(routes) - 1:
+                raise RuntimeError(
+                    "building the target system failed:\n{}".format("\n".join(output))
+                )
     finally:
         restore_offline_inputs(offline_rewrite)
-    if exit_code != 0:
-        raise RuntimeError("building the target system failed:\n{}".format("\n".join(output)))
 
     system_path = os.readlink(out_link)
     if not os.path.isabs(system_path):
         raise RuntimeError("unexpected out-link target: {}".format(system_path))
     append_log("system={}".format(system_path))
+
+    try:
+        progress.set_total(
+            measure_realized_items(run_command_output, root, system_path)
+        )
+    except Exception as error:
+        append_log("could not recount the realized closure: {}".format(error))
 
     status = "installing NixOS"
     phase("starting nixos-install")

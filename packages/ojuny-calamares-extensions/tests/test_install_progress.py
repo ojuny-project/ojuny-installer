@@ -7,7 +7,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "modules" / "ojuny"))
 
-from install_progress import InstallProgress, is_install_item, measure_closure_items
+from install_progress import (
+    InstallProgress,
+    is_install_item,
+    measure_closure_items,
+    measure_realized_items,
+)
 
 
 def line(payload):
@@ -43,6 +48,30 @@ def progress(act_id, done, expected):
             "fields": [done, expected],
         }
     )
+
+
+class MeasureRealizedItemsTest(unittest.TestCase):
+    def test_counts_only_install_items(self):
+        calls = []
+
+        def run(command):
+            calls.append(command)
+            return "\n".join(
+                ["/nix/store/a", "/nix/store/b.drv", "/nix/store/c-source", "/nix/store/d"]
+            )
+
+        self.assertEqual(
+            measure_realized_items(run, "/tmp/root", "/nix/store/abc-system"), 2
+        )
+        self.assertIn("--store", calls[0])
+        self.assertIn("/tmp/root", calls[0])
+        self.assertIn("/nix/store/abc-system", calls[0])
+
+    def test_rejects_closure_without_install_items(self):
+        with self.assertRaises(RuntimeError):
+            measure_realized_items(
+                lambda command: "/nix/store/a.drv\n", "/tmp/root", "/nix/store/x"
+            )
 
 
 class MeasureClosureItemsTest(unittest.TestCase):
@@ -175,21 +204,21 @@ class InstallProgressTest(unittest.TestCase):
         self.assertEqual(tracker.done, 5)
         self.assertEqual(tracker.fraction, 0.5)
 
-    def test_total_grows_to_remaining_work(self):
-        tracker = InstallProgress(1)
+    def test_expected_work_does_not_change_total(self):
+        tracker = InstallProgress(10)
         tracker.start()
         tracker.handle(start(1, 104))
         tracker.handle(progress(1, 5, 10))
         self.assertEqual(tracker.total, 10)
         self.assertEqual(tracker.fraction, 0.5)
 
-    def test_total_grows_before_precomputed_total_is_exhausted(self):
+    def test_expected_work_above_total_keeps_measured_total(self):
         tracker = InstallProgress(100)
         tracker.start()
         tracker.handle(start(1, 104))
         tracker.handle(progress(1, 90, 200))
-        self.assertEqual(tracker.total, 200)
-        self.assertEqual(tracker.fraction, 0.45)
+        self.assertEqual(tracker.total, 100)
+        self.assertEqual(tracker.fraction, 0.9)
 
     def test_fraction_does_not_drop_when_later_work_arrives(self):
         tracker = InstallProgress(100)
@@ -199,27 +228,24 @@ class InstallProgressTest(unittest.TestCase):
         self.assertEqual(tracker.fraction, 0.9)
         tracker.handle(start(2, 104))
         tracker.handle(progress(2, 0, 100))
-        self.assertEqual(tracker.total, 200)
+        self.assertEqual(tracker.total, 100)
         self.assertEqual(tracker.fraction, 0.9)
 
-    def test_hold_keeps_start_until_expected_work_is_known(self):
-        tracker = InstallProgress(10, hold_until_expected=True)
+    def test_completed_items_use_measured_total(self):
+        tracker = InstallProgress(10)
         tracker.start()
         tracker.handle(copy_start(2, "/nix/store/abc-hello"))
         tracker.handle(stop(2))
         self.assertEqual(tracker.done, 1)
-        self.assertEqual(tracker.fraction, 0.0)
-        tracker.handle(start(1, 104))
-        tracker.handle(progress(1, 9, 10))
-        self.assertGreater(tracker.fraction, 0.0)
+        self.assertEqual(tracker.fraction, 0.1)
 
-    def test_total_grows_when_precomputed_total_is_exhausted(self):
+    def test_fraction_caps_at_one(self):
         tracker = InstallProgress(5)
         tracker.start()
         tracker.handle(start(1, 104))
-        tracker.handle(progress(1, 5, 100))
-        self.assertEqual(tracker.total, 100)
-        self.assertEqual(tracker.fraction, 0.05)
+        tracker.handle(progress(1, 5, 50))
+        self.assertEqual(tracker.total, 5)
+        self.assertEqual(tracker.fraction, 1.0)
 
     def test_aggregate_copy_paths_are_ignored(self):
         tracker = InstallProgress(10)
@@ -229,13 +255,23 @@ class InstallProgressTest(unittest.TestCase):
         self.assertEqual(tracker.done, 0)
         self.assertEqual(tracker.fraction, 0.0)
 
-    def test_zero_total(self):
+    def test_zero_total_reports_no_fraction(self):
         tracker = InstallProgress(0)
         tracker.start()
         tracker.handle(copy_start(2, "/nix/store/abc-hello"))
         tracker.handle(stop(2))
-        self.assertEqual(tracker.total, 1)
-        self.assertEqual(tracker.fraction, 1.0)
+        self.assertEqual(tracker.done, 1)
+        self.assertEqual(tracker.total, 0)
+        self.assertEqual(tracker.fraction, 0.0)
+
+    def test_set_total_after_realisation_updates_fraction(self):
+        tracker = InstallProgress(0)
+        tracker.start()
+        tracker.handle(copy_start(2, "/nix/store/abc-hello"))
+        tracker.handle(stop(2))
+        tracker.set_total(4)
+        self.assertEqual(tracker.total, 4)
+        self.assertEqual(tracker.fraction, 0.25)
 
     def test_plain_line_is_not_json(self):
         tracker = InstallProgress(1)

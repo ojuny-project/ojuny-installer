@@ -47,13 +47,13 @@ def measure_closure_items(run, store, staging, hostname, env=None):
         env_prefix
         + [
             "nix",
+            "eval",
             "--store",
             store,
             "--eval-store",
             store,
             "--extra-experimental-features",
             "nix-command flakes",
-            "eval",
             "--raw",
             installable,
         ]
@@ -74,10 +74,21 @@ def measure_closure_items(run, store, staging, hostname, env=None):
     return len(items)
 
 
+def measure_realized_items(run, store, system_path):
+    """Return the number of installed store items in a realised system."""
+
+    closure_output = run(["nix-store", "--store", store, "-qR", system_path])
+    paths = {line.strip() for line in closure_output.splitlines() if line.strip()}
+    items = {path for path in paths if is_install_item(path)}
+    if not items:
+        raise RuntimeError("the realised system closure has no install items")
+    return len(items)
+
+
 class InstallProgress:
     """Track installed store items against a precomputed closure total."""
 
-    def __init__(self, total=0, hold_until_expected=False):
+    def __init__(self, total=0):
         self._total = max(0, int(total))
         self._done = 0
         self._fraction = 0.0
@@ -89,8 +100,6 @@ class InstallProgress:
         self._copies = {}
         self._build_baseline = {}
         self._built_items = 0
-        self._hold_until_expected = hold_until_expected
-        self._expected_known = False
         self._active_copies = {}
         self._active_builds = []
         self._builds_done_seen = 0
@@ -108,6 +117,12 @@ class InstallProgress:
     @property
     def fraction(self):
         return self._fraction
+
+    def set_total(self, total):
+        total = max(0, int(total))
+        if total > 0:
+            self._total = total
+            self._fraction = min(1.0, self._done / self._total)
 
     def start(self):
         self._active = True
@@ -254,25 +269,6 @@ class InstallProgress:
             self._builds_done_seen = builds_done
             for _ in range(min(completed, len(self._active_builds))):
                 self._active_builds.pop(0)
-        builds_expected = sum(expected for _, expected in self._builds.values())
-        copies_done = sum(done for done, _ in self._copies.values())
-        copies_expected = sum(expected for _, expected in self._copies.values())
-        remaining = max(0, builds_expected - builds_done) + max(
-            0, copies_expected - copies_done
-        )
-
-        if builds_expected > 0 or copies_expected > 0:
-            self._expected_known = True
-
-        known = self._done + remaining
-        if known > self._total:
-            self._total = known
-
-        if self._hold_until_expected and not self._expected_known:
-            if self._total == 0 or self._done < self._total:
-                return
-            self._expected_known = True
 
         if self._total > 0:
-            candidate = min(1.0, self._done / self._total)
-            self._fraction = max(self._fraction, candidate)
+            self._fraction = min(1.0, self._done / self._total)

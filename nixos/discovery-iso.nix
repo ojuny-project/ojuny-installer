@@ -35,6 +35,7 @@ let
         ../packages/calamares-compact-locale.patch
         ../packages/calamares-partition-note.patch
         ../packages/calamares-ojuny-esp.patch
+        ../packages/calamares-status-message.patch
       ];
   });
 
@@ -192,14 +193,17 @@ in
     "${pkgs.dbus}/bin/dbus-update-activation-environment --systemd DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE NIXOS_OZONE_WL XCURSOR_THEME XCURSOR_SIZE"
     "systemctl --user reset-failed"
     "systemctl --user start mango-session.target"
+    "systemctl --user start ojuny-install.service"
+  ];
+
+  desktop.ojuny.mango.exec = lib.mkForce [
+    "${pkgs.bash}/bin/sh -c 'dms ipc call lock isLocked >/dev/null 2>&1 && systemctl --user stop ojuny-login-splash.service || true'"
   ];
 
   desktop.ojuny.mango.rules.window_rule = [
     {
       app_id = "calamares";
       is_floating = 1;
-      width = 0.8;
-      height = 0.8;
     }
     {
       title = "Calamares";
@@ -265,7 +269,7 @@ in
 
   systemd.user.services.ojuny-install = {
     description = "Ojuny Calamares installer";
-    wantedBy = [ "mango-session.target" ];
+    wantedBy = [ ];
     after = [ "graphical-session.target" ];
     environment.QT_QPA_PLATFORM = "wayland;xcb";
     serviceConfig = {
