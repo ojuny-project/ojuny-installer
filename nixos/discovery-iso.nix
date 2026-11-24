@@ -200,15 +200,6 @@ in
     "${pkgs.bash}/bin/sh -c 'mmsg get all-layers 2>/dev/null | grep -q dms && systemctl --user stop ojuny-login-splash.service || true'"
   ];
 
-  systemd.user.services.ojuny-login-splash.serviceConfig.ExecStart = lib.mkForce (
-    let
-      stop = config.systemd.user.services.ojuny-login-splash.serviceConfig.ExecStop;
-      stopCommand = if builtins.isList stop then builtins.head stop else stop;
-      splash = lib.removeSuffix " --quit" stopCommand;
-    in
-    "${splash} --seconds 60 --fade-in 0.3 --fade-out 0.3"
-  );
-
   desktop.ojuny.mango.rules.window_rule = [
     {
       app_id = "calamares";
