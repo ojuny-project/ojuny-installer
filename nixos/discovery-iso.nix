@@ -197,7 +197,7 @@ in
   ];
 
   desktop.ojuny.mango.exec = lib.mkForce [
-    "${pkgs.bash}/bin/sh -c 'mmsg get all-layers 2>/dev/null | grep -q dms && systemctl --user stop ojuny-login-splash.service || true'"
+    "${pkgs.bash}/bin/sh -c 'if mmsg get all-layers 2>/dev/null | grep -q dms; then (${pkgs.coreutils}/bin/sleep 5; systemctl --user stop ojuny-login-splash.service) >/dev/null 2>&1 & fi'"
   ];
 
   desktop.ojuny.mango.rules.window_rule = [

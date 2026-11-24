@@ -8,9 +8,11 @@ import time
 _ACT_COPY_PATH = 100
 _ACT_COPY_PATHS = 103
 _ACT_BUILDS = 104
+_ACT_BUILD = 105
 _RES_PROGRESS = 105
 
 _STORE_PATH = re.compile(r"/nix/store/[^\s']+")
+_BUILD_PATH = re.compile(r"building '(/nix/store/[^']+)'")
 
 
 def is_install_item(path):
@@ -187,16 +189,28 @@ class InstallProgress:
                     "text": text,
                     "start": time.monotonic(),
                 }
+        elif act_type == _ACT_BUILD:
+            fields = message.get("fields") or []
+            path = fields[0] if fields and isinstance(fields[0], str) else ""
+            if not path.startswith("/nix/store/"):
+                match = _BUILD_PATH.search(text)
+                path = match.group(1) if match else ""
+            if path:
+                self.note_build_path(path, act_id)
 
     def note_build(self, text):
-        match = re.search(r"building '(/nix/store/[^']+)'", text)
-        if not match:
-            return
-        path = match.group(1)
-        if any(build["path"] == path for build in self._active_builds):
-            return
+        match = _BUILD_PATH.search(text)
+        if match:
+            self.note_build_path(match.group(1))
+
+    def note_build_path(self, path, act_id=None):
+        for build in self._active_builds:
+            if build["path"] == path:
+                if act_id is not None:
+                    build["id"] = act_id
+                return
         now = time.monotonic()
-        self._active_builds.append({"path": path, "start": now})
+        self._active_builds.append({"id": act_id, "path": path, "start": now})
         self._last_activity = now
         if len(self._active_builds) > 16:
             del self._active_builds[0]
@@ -206,6 +220,9 @@ class InstallProgress:
         act_type = self._activities.pop(act_id, 0)
         path = self._copy_paths.pop(act_id, None)
         self._active_copies.pop(act_id, None)
+        self._active_builds = [
+            build for build in self._active_builds if build.get("id") != act_id
+        ]
         if self._active and act_type == _ACT_COPY_PATH and path and is_install_item(path):
             self._copy_items += 1
 

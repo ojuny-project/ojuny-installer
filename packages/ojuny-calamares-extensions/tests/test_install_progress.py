@@ -31,6 +31,19 @@ def copy_start(act_id, path):
     )
 
 
+def build_start(act_id, path, fields=True):
+    payload = {
+        "action": "start",
+        "id": act_id,
+        "type": 105,
+        "level": 2,
+        "text": "building '{}'".format(path),
+    }
+    if fields:
+        payload["fields"] = [path, ""]
+    return line(payload)
+
+
 def stop(act_id):
     return line({"action": "stop", "id": act_id})
 
@@ -372,6 +385,40 @@ class InstallProgressTest(unittest.TestCase):
         text, _ = tracker.status_text(0)
         self.assertNotIn("Downloading", text)
         self.assertIn("Installing NixOS", text)
+
+    def test_build_activity_start_shows_the_derivation(self):
+        tracker = InstallProgress(10)
+        tracker.start()
+        tracker.handle(build_start(1, "/nix/store/abc-linux-6.18.60.drv"))
+        text, _ = tracker.status_text(0)
+        self.assertIn("Building", text)
+        self.assertIn("linux-6.18.60", text)
+
+    def test_build_activity_text_is_used_without_fields(self):
+        tracker = InstallProgress(10)
+        tracker.start()
+        tracker.handle(
+            build_start(1, "/nix/store/abc-linux-6.18.60.drv", fields=False)
+        )
+        text, _ = tracker.status_text(0)
+        self.assertIn("linux-6.18.60", text)
+
+    def test_stopped_build_activity_is_removed_from_status(self):
+        tracker = InstallProgress(10)
+        tracker.start()
+        tracker.handle(build_start(1, "/nix/store/abc-linux-6.18.60.drv"))
+        tracker.handle(stop(1))
+        text, _ = tracker.status_text(0)
+        self.assertNotIn("linux-6.18.60", text)
+
+    def test_build_text_then_activity_start_is_removed_on_stop(self):
+        tracker = InstallProgress(10)
+        tracker.start()
+        tracker.note_build("building '/nix/store/abc-linux-6.18.60.drv'")
+        tracker.handle(build_start(1, "/nix/store/abc-linux-6.18.60.drv"))
+        tracker.handle(stop(1))
+        text, _ = tracker.status_text(0)
+        self.assertNotIn("linux-6.18.60", text)
 
     def test_completed_build_is_removed_from_status(self):
         tracker = InstallProgress(10)
