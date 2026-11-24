@@ -51,7 +51,8 @@ origin, partition, summary, install, finished.
 
 A fresh target device has an empty Nix store, so every installed item in the
 target system closure must be added exactly once. The installer measures that
-total before `nixos-install` starts and then reports completed items.
+total before the pre-copy and target build start and then reports completed
+items.
 
 - Online installs evaluate the target `system.build.toplevel` derivation and
   count the unique install items returned by
@@ -61,13 +62,14 @@ total before `nixos-install` starts and then reports completed items.
   and `/etc/ojuny/target-toplevels` because the preload seeds those paths first.
 - During the install, one completed `Builds` item or one completed `CopyPath`
   activity for an install item increments the completed count. The aggregate
-  `CopyPaths` activity is not used because it also counts derivations and flake
-  inputs.
-- The flake input loading phase does not move the bar. Online installs keep the
-  bar at 20 percent until Nix reports the expected build or copy work, then the
-  item phase counts from that total. Offline preload starts from its precomputed
-  total.
-- Item work maps to `0.20-0.93` of the Calamares job for the target system
+  `CopyPaths` activity is not used for completed items because it also counts
+  derivations and flake inputs; its expected count only sizes the totals.
+- The flake input loading phase does not move the bar. The online pre-copy
+  section maps to `0.20-0.45` and uses its own copy-path count. The item section
+  starts at 45 percent; online builds hold it at 45 percent until Nix reports
+  the expected build or copy work, then the item phase counts from that total.
+  Offline item work starts from its precomputed total.
+- Item work maps to `0.45-0.93` of the Calamares job for the target system
   build, and `0.93-0.95` for the `nixos-install` profile and bootloader step.
   The remaining five percent are held for the generated configuration and
   cleanup.

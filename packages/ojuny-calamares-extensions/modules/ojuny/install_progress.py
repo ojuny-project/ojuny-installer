@@ -88,9 +88,10 @@ def measure_realized_items(run, store, system_path):
 class InstallProgress:
     """Track installed store items against a precomputed closure total."""
 
-    def __init__(self, total=0, grow_total=True):
+    def __init__(self, total=0, hold_until_expected=False):
         self._total = max(0, int(total))
-        self._grow_total = grow_total
+        self._hold_until_expected = hold_until_expected
+        self._expected_known = False
         self._done = 0
         self._fraction = 0.0
         self._active = False
@@ -277,10 +278,19 @@ class InstallProgress:
             0, copies_expected - copies_done
         )
 
-        if self._grow_total:
+        if builds_expected > 0 or copies_expected > 0:
+            self._expected_known = True
+
+        if not self._hold_until_expected or self._expected_known:
             known = self._done + remaining
             if known > self._total:
                 self._total = known
 
+        if self._hold_until_expected and not self._expected_known:
+            if self._total == 0 or self._done < self._total:
+                return
+            self._expected_known = True
+
         if self._total > 0:
-            self._fraction = max(self._fraction, min(1.0, self._done / self._total))
+            candidate = min(1.0, self._done / self._total)
+            self._fraction = max(self._fraction, candidate)

@@ -258,25 +258,42 @@ class InstallProgressTest(unittest.TestCase):
         self.assertEqual(tracker.total, 6)
         self.assertAlmostEqual(tracker.fraction, 1 / 6)
 
-    def test_pinned_total_ignores_expected_work(self):
-        tracker = InstallProgress(10, grow_total=False)
+    def test_total_grows_at_the_first_expected_report(self):
+        tracker = InstallProgress(4, hold_until_expected=True)
         tracker.start()
+        tracker.handle(start(1, 104))
+        tracker.handle(progress(1, 2, 20))
+        self.assertEqual(tracker.total, 20)
+        self.assertAlmostEqual(tracker.fraction, 0.1)
+
+    def test_hold_keeps_the_fraction_at_zero_until_expected_work_is_known(self):
+        tracker = InstallProgress(4, hold_until_expected=True)
+        tracker.start()
+        for index, path in enumerate(
+            ["/nix/store/abc-one", "/nix/store/abc-two", "/nix/store/abc-three"],
+            start=10,
+        ):
+            tracker.handle(copy_start(index, path))
+            tracker.handle(stop(index))
+        self.assertEqual(tracker.done, 3)
+        self.assertEqual(tracker.fraction, 0.0)
         tracker.handle(start(1, 103))
-        tracker.handle(progress(1, 5, 10))
+        tracker.handle(progress(1, 0, 10))
+        self.assertEqual(tracker.total, 13)
+        self.assertAlmostEqual(tracker.fraction, 3 / 13)
+
+    def test_hold_does_not_grow_from_completed_work_alone(self):
+        tracker = InstallProgress(0, hold_until_expected=True)
+        tracker.start()
         tracker.handle(copy_start(2, "/nix/store/abc-hello"))
         tracker.handle(stop(2))
         self.assertEqual(tracker.done, 1)
-        self.assertEqual(tracker.total, 10)
-        self.assertEqual(tracker.fraction, 0.1)
-
-    def test_pinned_total_still_rises_from_the_realized_recount(self):
-        tracker = InstallProgress(10, grow_total=False)
-        tracker.start()
-        tracker.handle(copy_start(2, "/nix/store/abc-hello"))
-        tracker.handle(stop(2))
-        tracker.set_total(20)
-        self.assertEqual(tracker.total, 20)
-        self.assertEqual(tracker.fraction, 0.1)
+        self.assertEqual(tracker.total, 0)
+        self.assertEqual(tracker.fraction, 0.0)
+        tracker.handle(start(1, 103))
+        tracker.handle(progress(1, 0, 10))
+        self.assertEqual(tracker.total, 11)
+        self.assertAlmostEqual(tracker.fraction, 1 / 11)
 
     def test_aggregate_all_entry_is_hidden_from_status(self):
         tracker = InstallProgress(10)

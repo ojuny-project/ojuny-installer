@@ -37,9 +37,9 @@ TEMPLATE_REVISION = None
 FLAKE_REVISION = None
 LOG_SAVED = False
 
-PROGRESS_COPY_START = 0.18
-PROGRESS_COPY_END = 0.30
-PROGRESS_ITEMS_START = 0.30
+PROGRESS_COPY_START = 0.20
+PROGRESS_COPY_END = 0.45
+PROGRESS_ITEMS_START = 0.45
 PROGRESS_BUILD_END = 0.93
 PROGRESS_ITEMS_END = 0.95
 
@@ -1536,11 +1536,13 @@ def install():
     if extra_file:
         os.unlink(extra_file)
 
-    libcalamares.job.setprogress(0.18)
+    libcalamares.job.setprogress(PROGRESS_COPY_START)
     offline_mode = os.path.exists("/etc/ojuny/offline")
     preload = preload_paths() if offline_mode else []
     phase("counting install items")
-    set_status("counting install items (this can take a few minutes)", 0.18)
+    set_status(
+        "counting install items (this can take a few minutes)", PROGRESS_COPY_START
+    )
     total_items = 0
     if offline_mode:
         total_items = len(set(preload))
@@ -1560,7 +1562,7 @@ def install():
         raise RuntimeError("Ojuny cannot start the install: {}".format(error))
     append_log("resource preflight: {}".format(guard.describe()))
 
-    copy_progress = InstallProgress(0)
+    copy_progress = InstallProgress(0, hold_until_expected=True)
     copy_progress.start()
 
     if offline_mode:
@@ -1576,7 +1578,7 @@ def install():
                 root, prebuild, copy_progress, PROGRESS_COPY_START, PROGRESS_COPY_END
             )
 
-    progress = InstallProgress(total_items, grow_total=False)
+    progress = InstallProgress(total_items, hold_until_expected=not offline_mode)
     progress.start()
     status = "installing NixOS"
     libcalamares.job.setprogress(PROGRESS_ITEMS_START)
@@ -1619,10 +1621,10 @@ def install():
     ]
 
     offline_rewrite = None
-    if offline_mode:
-        offline_rewrite = rewrite_offline_inputs(staging)
 
     try:
+        if offline_mode:
+            offline_rewrite = rewrite_offline_inputs(staging)
         for index, eval_args in enumerate(routes):
             if eval_args and eval_args[1] == eval_store:
                 os.makedirs(eval_store, exist_ok=True)
