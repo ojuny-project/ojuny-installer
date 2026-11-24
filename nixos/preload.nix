@@ -130,15 +130,17 @@ in
     description = "Ojuny package store paths preloaded into every ISO so installs copy them instead of building from source.";
   };
 
-  config.ojuny.preloadPaths = lib.unique (
-    (if generatedPaths != [ ] then map withContext generatedPaths else [ ])
-    ++ lib.concatMap outputsOf packages
-    ++ [ target.pkgs.haskellPackages.hostname.src ]
-  );
+  config = {
+    ojuny.preloadPaths = lib.unique (
+      (if generatedPaths != [ ] then map withContext generatedPaths else [ ])
+      ++ lib.concatMap outputsOf packages
+      ++ [ target.pkgs.haskellPackages.hostname.src ]
+    );
 
-  config.ojuny.prebuildPaths = lib.unique (lib.concatMap outputsOf ojunyPackages);
+    ojuny.prebuildPaths = lib.unique (lib.concatMap outputsOf ojunyPackages);
 
-  environment.etc."ojuny/prebuild-paths".text = lib.concatStringsSep "\n" (
-    map toString config.ojuny.prebuildPaths
-  );
+    environment.etc."ojuny/prebuild-paths".text = lib.concatStringsSep "\n" (
+      map toString config.ojuny.prebuildPaths
+    );
+  };
 }
