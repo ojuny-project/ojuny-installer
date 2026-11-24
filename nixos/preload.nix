@@ -104,7 +104,7 @@ let
     "raven"
   ];
 
-  homeUsers = (target.config.home-manager or { }).users or { };
+  homeUsers = (config.home-manager or { }).users or { };
 
   ojunyPackages =
     builtins.filter
@@ -113,7 +113,7 @@ let
         isPackage package && lib.any (prefix: lib.hasPrefix prefix (package.name or "")) ojunyNamePrefixes
       )
       (
-        target.config.environment.systemPackages
+        config.environment.systemPackages
         ++ lib.concatMap (user: user.home.packages) (lib.attrValues homeUsers)
       );
 in

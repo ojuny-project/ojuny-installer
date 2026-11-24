@@ -1705,11 +1705,6 @@ def install():
 
     phase("nixos-install finished")
 
-    try:
-        run_command([cmd("pkexec"), cmd("rm"), "-rf", scratch])
-    except Exception as error:
-        append_log("could not remove {}: {}".format(scratch, error))
-
     if bootorder and previous_boot and os.path.exists(previous_boot):
         try:
             result = subprocess.run(
@@ -1735,6 +1730,12 @@ def install():
         finally:
             os.unlink(previous_boot)
 
+    # home-manager activation runs as root during nixos-install and creates
+    # ~/.config entries owned by root. Hand the whole home tree back to the
+    # user before any later step can fail on a root-owned configuration.
+    phase("fixing home ownership")
+    run_command([cmd("pkexec"), cmd("chown"), "-R", "1000:100", home])
+
     libcalamares.job.setprogress(PROGRESS_ITEMS_END)
     phase("copying generated configuration")
     repos_dir = os.path.dirname(clone)
@@ -1743,6 +1744,11 @@ def install():
     run_command([cmd("pkexec"), cmd("install"), "-d", "-m", "0755", clone])
     run_command([cmd("pkexec"), cmd("cp"), "-a", staging + "/.", clone])
     run_command([cmd("pkexec"), cmd("rm"), "-rf", staging])
+
+    try:
+        run_command([cmd("pkexec"), cmd("rm"), "-rf", scratch])
+    except Exception as error:
+        append_log("could not remove {}: {}".format(scratch, error))
 
     libcalamares.job.setprogress(0.99)
     phase("setting up git")
@@ -1780,10 +1786,7 @@ def install():
         run_command([cmd("pkexec"), cmd("chown"), "1000:100", credential_path])
         run_command([cmd("pkexec"), cmd("chmod"), "600", credential_path])
 
-    # home-manager activation runs as root during nixos-install and creates
-    # ~/.config entries owned by root. Hand the whole home tree back to the
-    # user so the desktop session can write its own configuration.
-    phase("fixing home ownership")
+    # write_gui_config creates ~/.config as root; hand it back before the session.
     run_command([cmd("pkexec"), cmd("chown"), "-R", "1000:100", home])
 
     phase("collecting install report")
