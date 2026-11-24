@@ -130,15 +130,14 @@ in
     "${pkgs.bash}/bin/sh -c 'mmsg get all-layers 2>/dev/null | grep -q dms && systemctl --user stop ojuny-login-splash.service || true'"
   ];
 
-  environment.etc."systemd/user/ojuny-login-splash.service.d/10-seconds.conf".text =
+  systemd.user.services.ojuny-login-splash.serviceConfig.ExecStart = lib.mkForce (
     let
-      splash = config.systemd.user.services.ojuny-login-splash.serviceConfig.ExecStart;
+      stop = config.systemd.user.services.ojuny-login-splash.serviceConfig.ExecStop;
+      stopCommand = if builtins.isList stop then builtins.head stop else stop;
+      splash = lib.removeSuffix " --quit" stopCommand;
     in
-    ''
-      [Service]
-      ExecStart=
-      ExecStart=${lib.replaceStrings [ "--seconds 10" ] [ "--seconds 60" ] splash}
-    '';
+    "${splash} --seconds 60 --fade-in 0.3 --fade-out 0.3"
+  );
 
   desktop.ojuny.mango.rules.window_rule = [
     {
