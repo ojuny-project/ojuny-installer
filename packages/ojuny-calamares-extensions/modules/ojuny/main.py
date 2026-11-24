@@ -67,6 +67,22 @@ def phase(message):
     libcalamares.utils.debug("Ojuny: " + message)
 
 
+def note_step(label, fraction):
+    global status
+    status = label
+    append_log("STEP " + label)
+    libcalamares.utils.debug("Ojuny: " + label)
+    libcalamares.job.setprogress(fraction)
+
+
+def run_step(label, fraction, action):
+    note_step(label, fraction)
+    started = time.monotonic()
+    result = action()
+    append_log("{} finished in {:.1f}s".format(label, time.monotonic() - started))
+    return result
+
+
 def write_install_report():
     try:
         import collect_install_report
@@ -232,6 +248,7 @@ def stream_with_progress(command, progress, start, end, label, guard=None):
         raise GuardFailure(message)
 
     def heartbeat():
+        global status
         nonlocal cursor
         text, cursor = progress.status_text(cursor)
         status = text
@@ -1081,6 +1098,14 @@ def write_gui_config(home, clone, host, shell):
     run_command([cmd("pkexec"), cmd("chown"), "1000:100", config_dir, config_path])
 
 
+def prebuild_paths():
+    name = "/etc/ojuny/prebuild-paths"
+    if not os.path.exists(name):
+        return []
+    with open(name) as handle:
+        return [line.strip() for line in handle if line.strip()]
+
+
 def preload_paths():
     paths = []
     for name in ("/etc/ojuny/flake-inputs", "/etc/ojuny/target-toplevels"):
@@ -1323,6 +1348,7 @@ def install():
         run_command([cmd("pkexec"), cmd("rm"), "-rf", clone])
 
     phase("preparing template and hardware")
+    note_step("preparing template", 0.02)
     if mode == "prepared":
         if not template_url:
             raise RuntimeError("a prepared template repository URL is required")
@@ -1331,9 +1357,14 @@ def install():
                 "the template input does not provide regenerate-hardware"
             )
 
-        libcalamares.job.setprogress(0.02)
         try:
-            clone_prepared(template_url, template_token, template_branch, staging)
+            run_step(
+                "cloning the prepared template",
+                0.02,
+                lambda: clone_prepared(
+                    template_url, template_token, template_branch, staging
+                ),
+            )
         except Exception as error:
             raise RuntimeError(
                 "could not clone the prepared template repository {url}: {error}\n"
@@ -1358,11 +1389,15 @@ def install():
                 )
             )
 
-        libcalamares.job.setprogress(0.04)
-        run_script(
-            regenerate_hardware,
-            hardware_script_args(staging, root, firmware, device, extra_file),
+        run_step(
+            "preparing template hardware",
+            0.08,
+            lambda: run_script(
+                regenerate_hardware,
+                hardware_script_args(staging, root, firmware, device, extra_file),
+            ),
         )
+        note_step("preparing template host", 0.14)
         git = cmd("git")
         run_command([cmd("pkexec"), git, "-C", staging, "add", "-A"])
         run_command(
@@ -1383,7 +1418,6 @@ def install():
         )
     else:
         if prepare_repo:
-            libcalamares.job.setprogress(0.02)
             prepare_args = [
                 "--root",
                 staging,
@@ -1412,17 +1446,29 @@ def install():
                 prepare_args += ["--locale", locale]
             if keymap:
                 prepare_args += ["--keymap", keymap]
-            run_script(prepare_repo, prepare_args)
+            run_step(
+                "preparing template user",
+                0.02,
+                lambda: run_script(prepare_repo, prepare_args),
+            )
             capture_template_identity(template_path, template_path)
 
-            libcalamares.job.setprogress(0.04)
             if regenerate_hardware:
-                run_script(
-                    regenerate_hardware,
-                    hardware_script_args(staging, root, firmware, device, extra_file),
+                run_step(
+                    "preparing template hardware",
+                    0.08,
+                    lambda: run_script(
+                        regenerate_hardware,
+                        hardware_script_args(staging, root, firmware, device, extra_file),
+                    ),
                 )
             else:
-                hardware = generate_hardware(root)
+                hardware = run_step(
+                    "preparing template hardware",
+                    0.08,
+                    lambda: generate_hardware(root),
+                )
+                note_step("preparing template host", 0.12)
                 flake_structure.ensure_hardware(
                     staging,
                     hardware_module(hardware, firmware, device, extra_lines),
@@ -1430,31 +1476,47 @@ def install():
                     fallback_rel="modules/00-hardware.nix",
                 )
             sanitize_hardware_module(staging)
-            generate_facter(staging)
+            run_step(
+                "preparing template hardware",
+                0.14,
+                lambda: generate_facter(staging),
+            )
         else:
-            libcalamares.job.setprogress(0.02)
+            note_step("preparing template source", 0.02)
             run_command([cmd("pkexec"), cmd("cp"), "-a", template_path, staging])
             run_command([cmd("pkexec"), cmd("chmod"), "-R", "u+w", staging])
             capture_template_identity(template_path, template_path)
 
-            libcalamares.job.setprogress(0.04)
-            hardware = generate_hardware(root)
-            configure_template(
-                staging,
-                runtime_clone,
-                hostname,
-                username,
-                fullname,
-                hashed_password,
-                shell,
-                version,
-                hardware,
-                firmware,
-                device,
-                extra_lines,
+            hardware = run_step(
+                "preparing template hardware",
+                0.06,
+                lambda: generate_hardware(root),
             )
+            run_step(
+                "preparing template user",
+                0.10,
+                lambda: configure_template(
+                    staging,
+                    runtime_clone,
+                    hostname,
+                    username,
+                    fullname,
+                    hashed_password,
+                    shell,
+                    version,
+                    hardware,
+                    firmware,
+                    device,
+                    extra_lines,
+                ),
+            )
+            note_step("preparing template host", 0.14)
             sanitize_hardware_module(staging)
-            generate_facter(staging)
+            run_step(
+                "preparing template hardware",
+                0.16,
+                lambda: generate_facter(staging),
+            )
 
     multiboot = multiboot_needed(partitions)
     append_log(
@@ -1466,10 +1528,11 @@ def install():
     if extra_file:
         os.unlink(extra_file)
 
+    libcalamares.job.setprogress(0.18)
     offline_mode = os.path.exists("/etc/ojuny/offline")
     preload = preload_paths() if offline_mode else []
-    status = "counting install items"
-    append_log("counting install items")
+    phase("counting install items")
+    note_step("counting install items (this can take a few minutes)", 0.18)
     total_items = 0
     if offline_mode:
         total_items = len(set(preload))
@@ -1497,6 +1560,11 @@ def install():
     if offline_mode:
         phase("preloading offline store")
         preload_store_paths(root, preload, progress)
+    else:
+        prebuild = prebuild_paths()
+        if prebuild:
+            phase("preloading source-built packages")
+            preload_store_paths(root, prebuild, progress)
 
     previous_boot = None
     if bootorder:
@@ -1517,7 +1585,10 @@ def install():
 
     status = "building the target system"
     phase("starting nix build")
+    libcalamares.job.setprogress(PROGRESS_ITEMS_START)
     run_command([cmd("pkexec"), cmd("chmod"), "755", root])
+    build_dir = os.path.join(root, "nix/var/nix/builds")
+    run_command([cmd("pkexec"), cmd("install"), "-d", "-m", "0755", build_dir])
     out_link = os.path.join(scratch, "toplevel")
     installable = (
         '{staging}#nixosConfigurations."{hostname}".config.system.build.toplevel'
@@ -1549,7 +1620,7 @@ def install():
             ] + eval_args + [
                 "--option",
                 "build-dir",
-                "/nix/var/nix/builds",
+                build_dir,
                 "--out-link",
                 out_link,
                 installable,

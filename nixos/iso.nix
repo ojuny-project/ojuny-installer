@@ -127,8 +127,18 @@ in
   ];
 
   desktop.ojuny.mango.exec = lib.mkForce [
-    "${pkgs.bash}/bin/sh -c 'dms ipc call lock isLocked >/dev/null 2>&1 && systemctl --user stop ojuny-login-splash.service || true'"
+    "${pkgs.bash}/bin/sh -c 'mmsg get all-layers 2>/dev/null | grep -q dms && systemctl --user stop ojuny-login-splash.service || true'"
   ];
+
+  environment.etc."systemd/user/ojuny-login-splash.service.d/10-seconds.conf".text =
+    let
+      splash = config.systemd.user.services.ojuny-login-splash.serviceConfig.ExecStart;
+    in
+    ''
+      [Service]
+      ExecStart=
+      ExecStart=${lib.replaceStrings [ "--seconds 10" ] [ "--seconds 60" ] splash}
+    '';
 
   desktop.ojuny.mango.rules.window_rule = [
     {
@@ -136,7 +146,7 @@ in
       is_floating = 1;
     }
     {
-      title = "Calamares";
+      title = "Ojuny Installer";
       is_floating = 1;
       width = 0.8;
       height = 0.8;

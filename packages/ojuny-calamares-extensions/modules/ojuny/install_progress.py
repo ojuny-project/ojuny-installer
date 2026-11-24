@@ -120,9 +120,10 @@ class InstallProgress:
 
     def set_total(self, total):
         total = max(0, int(total))
-        if total > 0:
+        if total > self._total:
             self._total = total
-            self._fraction = min(1.0, self._done / self._total)
+        if self._total > 0:
+            self._fraction = max(self._fraction, min(1.0, self._done / self._total))
 
     def start(self):
         self._active = True
@@ -270,5 +271,16 @@ class InstallProgress:
             for _ in range(min(completed, len(self._active_builds))):
                 self._active_builds.pop(0)
 
+        builds_expected = sum(expected for _, expected in self._builds.values())
+        copies_done = sum(done for done, _ in self._copies.values())
+        copies_expected = sum(expected for _, expected in self._copies.values())
+        remaining = max(0, builds_expected - builds_done) + max(
+            0, copies_expected - copies_done
+        )
+
+        known = self._done + remaining
+        if known > self._total:
+            self._total = known
+
         if self._total > 0:
-            self._fraction = min(1.0, self._done / self._total)
+            self._fraction = max(self._fraction, min(1.0, self._done / self._total))

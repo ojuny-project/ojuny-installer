@@ -1,4 +1,5 @@
 {
+  config,
   lib,
   target,
   ...
@@ -99,6 +100,7 @@ let
     "nix-cleaner"
     "nix-cache-discovery"
     "nom-cache-discovery"
+    "nix-output-monitor"
     "raven"
   ];
 
@@ -135,4 +137,8 @@ in
   );
 
   config.ojuny.prebuildPaths = lib.unique (lib.concatMap outputsOf ojunyPackages);
+
+  environment.etc."ojuny/prebuild-paths".text = lib.concatStringsSep "\n" (
+    map toString config.ojuny.prebuildPaths
+  );
 }
