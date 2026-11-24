@@ -37,7 +37,9 @@ TEMPLATE_REVISION = None
 FLAKE_REVISION = None
 LOG_SAVED = False
 
-PROGRESS_ITEMS_START = 0.20
+PROGRESS_COPY_START = 0.18
+PROGRESS_COPY_END = 0.30
+PROGRESS_ITEMS_START = 0.30
 PROGRESS_BUILD_END = 0.93
 PROGRESS_ITEMS_END = 0.95
 
@@ -65,6 +67,12 @@ def append_log(message):
 def phase(message):
     append_log("PHASE " + message)
     libcalamares.utils.debug("Ojuny: " + message)
+
+
+def set_status(label, fraction):
+    global status
+    status = label
+    libcalamares.job.setprogress(fraction)
 
 
 def note_step(label, fraction):
@@ -1116,7 +1124,7 @@ def preload_paths():
     return paths
 
 
-def preload_store_paths(root, paths, progress):
+def preload_store_paths(root, paths, progress, start, end):
     if not paths:
         return
 
@@ -1136,7 +1144,7 @@ def preload_store_paths(root, paths, progress):
         root,
     ] + paths
     exit_code, output = stream_with_progress(
-        command, progress, PROGRESS_ITEMS_START, PROGRESS_ITEMS_END, "nix copy"
+        command, progress, start, end, "nix copy"
     )
     if exit_code != 0:
         raise RuntimeError("nix copy failed:\n{}".format("\n".join(output)))
@@ -1348,7 +1356,7 @@ def install():
         run_command([cmd("pkexec"), cmd("rm"), "-rf", clone])
 
     phase("preparing template and hardware")
-    note_step("preparing template", 0.02)
+    set_status("preparing template", 0.02)
     if mode == "prepared":
         if not template_url:
             raise RuntimeError("a prepared template repository URL is required")
@@ -1477,7 +1485,7 @@ def install():
                 )
             sanitize_hardware_module(staging)
             run_step(
-                "preparing template hardware",
+                "collecting hardware facts",
                 0.14,
                 lambda: generate_facter(staging),
             )
@@ -1513,7 +1521,7 @@ def install():
             note_step("preparing template host", 0.14)
             sanitize_hardware_module(staging)
             run_step(
-                "preparing template hardware",
+                "collecting hardware facts",
                 0.16,
                 lambda: generate_facter(staging),
             )
@@ -1532,7 +1540,7 @@ def install():
     offline_mode = os.path.exists("/etc/ojuny/offline")
     preload = preload_paths() if offline_mode else []
     phase("counting install items")
-    note_step("counting install items (this can take a few minutes)", 0.18)
+    set_status("counting install items (this can take a few minutes)", 0.18)
     total_items = 0
     if offline_mode:
         total_items = len(set(preload))
@@ -1552,19 +1560,26 @@ def install():
         raise RuntimeError("Ojuny cannot start the install: {}".format(error))
     append_log("resource preflight: {}".format(guard.describe()))
 
-    progress = InstallProgress(total_items)
-    progress.start()
-    status = "installing NixOS"
-    libcalamares.job.setprogress(PROGRESS_ITEMS_START)
+    copy_progress = InstallProgress(0)
+    copy_progress.start()
 
     if offline_mode:
         phase("preloading offline store")
-        preload_store_paths(root, preload, progress)
+        preload_store_paths(
+            root, preload, copy_progress, PROGRESS_COPY_START, PROGRESS_COPY_END
+        )
     else:
         prebuild = prebuild_paths()
         if prebuild:
             phase("preloading source-built packages")
-            preload_store_paths(root, prebuild, progress)
+            preload_store_paths(
+                root, prebuild, copy_progress, PROGRESS_COPY_START, PROGRESS_COPY_END
+            )
+
+    progress = InstallProgress(total_items, grow_total=False)
+    progress.start()
+    status = "installing NixOS"
+    libcalamares.job.setprogress(PROGRESS_ITEMS_START)
 
     previous_boot = None
     if bootorder:
@@ -1587,8 +1602,11 @@ def install():
     phase("starting nix build")
     libcalamares.job.setprogress(PROGRESS_ITEMS_START)
     run_command([cmd("pkexec"), cmd("chmod"), "755", root])
-    build_dir = os.path.join(root, "nix/var/nix/builds")
+    build_dir = "/nix/var/nix/builds"
+    target_build_dir = os.path.join(root, "nix/var/nix/builds")
     run_command([cmd("pkexec"), cmd("install"), "-d", "-m", "0755", build_dir])
+    run_command([cmd("pkexec"), cmd("install"), "-d", "-m", "0755", target_build_dir])
+    run_command([cmd("pkexec"), cmd("mount"), "--bind", target_build_dir, build_dir])
     out_link = os.path.join(scratch, "toplevel")
     installable = (
         '{staging}#nixosConfigurations."{hostname}".config.system.build.toplevel'
@@ -1640,6 +1658,10 @@ def install():
                     "building the target system failed:\n{}".format("\n".join(output))
                 )
     finally:
+        try:
+            run_command([cmd("pkexec"), cmd("umount"), build_dir])
+        except Exception as error:
+            append_log("could not unmount {}: {}".format(build_dir, error))
         restore_offline_inputs(offline_rewrite)
 
     system_path = os.readlink(out_link)

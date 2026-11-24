@@ -247,6 +247,44 @@ class InstallProgressTest(unittest.TestCase):
         self.assertEqual(tracker.total, 50)
         self.assertEqual(tracker.fraction, 0.1)
 
+    def test_copy_tracker_grows_its_own_total(self):
+        tracker = InstallProgress(0)
+        tracker.start()
+        tracker.handle(start(1, 103))
+        tracker.handle(progress(1, 5, 10))
+        tracker.handle(copy_start(2, "/nix/store/abc-hello"))
+        tracker.handle(stop(2))
+        self.assertEqual(tracker.done, 1)
+        self.assertEqual(tracker.total, 6)
+        self.assertAlmostEqual(tracker.fraction, 1 / 6)
+
+    def test_pinned_total_ignores_expected_work(self):
+        tracker = InstallProgress(10, grow_total=False)
+        tracker.start()
+        tracker.handle(start(1, 103))
+        tracker.handle(progress(1, 5, 10))
+        tracker.handle(copy_start(2, "/nix/store/abc-hello"))
+        tracker.handle(stop(2))
+        self.assertEqual(tracker.done, 1)
+        self.assertEqual(tracker.total, 10)
+        self.assertEqual(tracker.fraction, 0.1)
+
+    def test_pinned_total_still_rises_from_the_realized_recount(self):
+        tracker = InstallProgress(10, grow_total=False)
+        tracker.start()
+        tracker.handle(copy_start(2, "/nix/store/abc-hello"))
+        tracker.handle(stop(2))
+        tracker.set_total(20)
+        self.assertEqual(tracker.total, 20)
+        self.assertEqual(tracker.fraction, 0.1)
+
+    def test_aggregate_all_entry_is_hidden_from_status(self):
+        tracker = InstallProgress(10)
+        tracker.start()
+        tracker.handle(copy_start(2, "/nix/store/abcdefghijklmnopqrstuvwxyz012345-all"))
+        text, _ = tracker.status_text(0)
+        self.assertNotIn("Copying", text)
+
     def test_aggregate_copy_paths_are_ignored(self):
         tracker = InstallProgress(10)
         tracker.start()

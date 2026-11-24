@@ -88,8 +88,9 @@ def measure_realized_items(run, store, system_path):
 class InstallProgress:
     """Track installed store items against a precomputed closure total."""
 
-    def __init__(self, total=0):
+    def __init__(self, total=0, grow_total=True):
         self._total = max(0, int(total))
+        self._grow_total = grow_total
         self._done = 0
         self._fraction = 0.0
         self._active = False
@@ -102,7 +103,6 @@ class InstallProgress:
         self._built_items = 0
         self._active_copies = {}
         self._active_builds = []
-        self._builds_done_seen = 0
         self._last_activity = time.monotonic()
         self.log_messages = []
 
@@ -134,7 +134,6 @@ class InstallProgress:
         self._copy_items = 0
         self._active_copies.clear()
         self._active_builds.clear()
-        self._builds_done_seen = 0
         self._last_activity = time.monotonic()
         self._build_baseline = {
             act_id: done for act_id, (done, _) in self._builds.items()
@@ -225,8 +224,11 @@ class InstallProgress:
         now = time.monotonic()
         entries = []
         for copy in self._active_copies.values():
+            name = display_name(copy["path"])
+            if name == "all":
+                continue
             action = "Downloading" if "from 'http" in copy["text"] else "Copying"
-            entries.append((action, display_name(copy["path"]), now - copy["start"]))
+            entries.append((action, name, now - copy["start"]))
         for build in self._active_builds:
             entries.append(("Building", display_name(build["path"]), now - build["start"]))
         return entries
@@ -265,22 +267,20 @@ class InstallProgress:
             self._done = done
 
         builds_done = sum(done for done, _ in self._builds.values())
-        if builds_done > self._builds_done_seen:
-            completed = builds_done - self._builds_done_seen
-            self._builds_done_seen = builds_done
-            for _ in range(min(completed, len(self._active_builds))):
-                self._active_builds.pop(0)
 
         builds_expected = sum(expected for _, expected in self._builds.values())
+        if builds_expected and builds_done >= builds_expected:
+            self._active_builds.clear()
         copies_done = sum(done for done, _ in self._copies.values())
         copies_expected = sum(expected for _, expected in self._copies.values())
         remaining = max(0, builds_expected - builds_done) + max(
             0, copies_expected - copies_done
         )
 
-        known = self._done + remaining
-        if known > self._total:
-            self._total = known
+        if self._grow_total:
+            known = self._done + remaining
+            if known > self._total:
+                self._total = known
 
         if self._total > 0:
             self._fraction = max(self._fraction, min(1.0, self._done / self._total))
