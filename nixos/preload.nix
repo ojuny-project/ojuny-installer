@@ -110,7 +110,7 @@ let
     desktop.inputs.dux-calendar.packages.${hostSystem}.default
     desktop.inputs.dux-gop.packages.${hostSystem}.default
     desktop.inputs.dux-search.packages.${hostSystem}.default
-    desktop.inputs.ojuny-login-splash.packages.${hostSystem}.ojuny-login-splash-binary
+    desktop.inputs.ojuny-login-splash.packages.${hostSystem}.default
     shell.inputs.dux-qt-base.packages.${hostSystem}.default
   ];
 in
