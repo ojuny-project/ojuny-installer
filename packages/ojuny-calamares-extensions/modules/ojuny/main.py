@@ -513,6 +513,7 @@ def user_module(username, fullname, hashed_password, shell, version, home_manage
           shell = pkgs.{shell};
         }};
       }};
+      ojuny.primaryUser = "{username}";
 {home_block}
     }};
 
