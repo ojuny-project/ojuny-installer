@@ -1,11 +1,18 @@
 {
   config,
+  inputs,
   lib,
+  pkgs,
   target,
   ...
 }:
 
 let
+  hostSystem = pkgs.stdenv.hostPlatform.system;
+  template = inputs.ojuny-template;
+  desktop = template.inputs.ojuny-desktop;
+  shell = desktop.inputs.dux-shell;
+
   generated = ./preload-paths.txt;
 
   generatedPaths =
@@ -84,38 +91,28 @@ let
     removeReferencesTo
   ];
 
-  isPackage = value: builtins.isAttrs value && (value.type or "") == "derivation";
-
-  ojunyNamePrefixes = [
-    "dank"
-    "dux"
-    "ojuny"
-    "mango"
-    "dms"
-    "quickshell"
-    "nix-settings-gui"
-    "nix-shell-gui"
-    "simple-nix-update-gui"
-    "nix-regedit"
-    "nix-cleaner"
-    "nix-cache-discovery"
-    "nom-cache-discovery"
-    "nix-output-monitor"
-    "raven"
+  # Source-built items that a default base install reuses. Versions come from
+  # the installer's ojuny-template input and its lock; add new items here only.
+  sourceBuilt = [
+    template.packages.${hostSystem}.dux
+    template.packages.${hostSystem}.mango
+    template.packages.${hostSystem}.dms-greeter
+    template.packages.${hostSystem}.nix-settings-gui
+    template.packages.${hostSystem}.nix-regedit
+    template.packages.${hostSystem}.nix-shell-gui
+    template.packages.${hostSystem}.nix-cleaner
+    template.packages.${hostSystem}.ojuny-welcome
+    template.packages.${hostSystem}.ojuny-cli
+    template.packages.${hostSystem}.ojuny-patches-cli
+    template.packages.${hostSystem}.ojuny-manual
+    desktop.packages.${hostSystem}.ojuny-WinMenu
+    desktop.inputs.dux-files.packages.${hostSystem}.default
+    desktop.inputs.dux-calendar.packages.${hostSystem}.default
+    desktop.inputs.dux-gop.packages.${hostSystem}.default
+    desktop.inputs.dux-search.packages.${hostSystem}.default
+    desktop.inputs.ojuny-login-splash.packages.${hostSystem}.ojuny-login-splash-binary
+    shell.inputs.dux-qt-base.packages.${hostSystem}.default
   ];
-
-  homeUsers = (config.home-manager or { }).users or { };
-
-  ojunyPackages =
-    builtins.filter
-      (
-        package:
-        isPackage package && lib.any (prefix: lib.hasPrefix prefix (package.name or "")) ojunyNamePrefixes
-      )
-      (
-        config.environment.systemPackages
-        ++ lib.concatMap (user: user.home.packages) (lib.attrValues homeUsers)
-      );
 in
 {
   options.ojuny.preloadPaths = lib.mkOption {
@@ -137,7 +134,7 @@ in
       ++ [ target.pkgs.haskellPackages.hostname.src ]
     );
 
-    ojuny.prebuildPaths = lib.unique (lib.concatMap outputsOf ojunyPackages);
+    ojuny.prebuildPaths = lib.unique (lib.concatMap outputsOf sourceBuilt);
 
     environment.etc."ojuny/prebuild-paths".text = lib.concatStringsSep "\n" (
       map toString config.ojuny.prebuildPaths
