@@ -201,11 +201,11 @@
     "dank-qml-common_5": {
       "flake": false,
       "locked": {
-        "lastModified": 1795443720,
-        "narHash": "sha256-PNc4vXmHEng0cpxDbpD1VqvJ6OmpBhVvv2z987b/ke0=",
+        "lastModified": 1795625362,
+        "narHash": "sha256-i8eUaVSUEbvkTvW9yLPtOsKQZO5s3khXszAg+sEDiKw=",
         "owner": "duxlabs-dev",
         "repo": "dux-qml-common",
-        "rev": "73bd713f8603bd65864c76dc820f2120b7b82f22",
+        "rev": "440a066dbd68ac9a9be0de7134679e304b30d6ca",
         "type": "github"
       },
       "original": {
@@ -312,11 +312,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1795541683,
-        "narHash": "sha256-7tHUy2oJlptgTxqEftKRgYGoSNX2lFAlMo3BqPNmC6c=",
+        "lastModified": 1795625425,
+        "narHash": "sha256-FMhDSkWikcFSa4ceIZHQOePr+7dYfgKOGVld4cGf9pU=",
         "owner": "duxlabs-dev",
         "repo": "dux-calendar",
-        "rev": "39a379b9968efed419c5a9cc392e5a56d7b25d9d",
+        "rev": "dfbed6979f61186876140270aa78b164c9a01aa7",
         "type": "github"
       },
       "original": {
@@ -336,11 +336,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1795546101,
-        "narHash": "sha256-xbQeV2RTlSlyKUok9sK6V5w7jA5355vVk8r9JBg1Bj8=",
+        "lastModified": 1795617477,
+        "narHash": "sha256-AxwSrEl8Ns0SwcqZh/u6RIWiEYSvJPQPjE4KaCxWDgw=",
         "owner": "duxlabs-dev",
         "repo": "dux-files",
-        "rev": "b4f22bdd0196d29c0c7f146af0019e5cb13edc78",
+        "rev": "f40e4c2fd409525295038f52dd70d11be6bca3e4",
         "type": "github"
       },
       "original": {
@@ -381,11 +381,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1795541685,
-        "narHash": "sha256-b2Jd+nMmUKk7KI7TtemdqJPLUTE7vYp2s3QLI+VwEQc=",
+        "lastModified": 1795621027,
+        "narHash": "sha256-9xOF3pjZgyzsQYIXT5THUsIBFIsP2E4XiVwND4x+qhM=",
         "owner": "duxlabs-dev",
         "repo": "dux-greeter",
-        "rev": "d319bba8e179720f7e2790cded27814ebbacf06a",
+        "rev": "a25b9e594f937166b6b7978f8de6b3faec76863d",
         "type": "github"
       },
       "original": {
@@ -405,11 +405,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1795541685,
-        "narHash": "sha256-b2Jd+nMmUKk7KI7TtemdqJPLUTE7vYp2s3QLI+VwEQc=",
+        "lastModified": 1795621027,
+        "narHash": "sha256-9xOF3pjZgyzsQYIXT5THUsIBFIsP2E4XiVwND4x+qhM=",
         "owner": "duxlabs-dev",
         "repo": "dux-greeter",
-        "rev": "d319bba8e179720f7e2790cded27814ebbacf06a",
+        "rev": "a25b9e594f937166b6b7978f8de6b3faec76863d",
         "type": "github"
       },
       "original": {
@@ -427,11 +427,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1795586825,
-        "narHash": "sha256-IqYrKiR5l070PK2FOZkIFbxeQxTOGe+Mkmk+26nmhcA=",
+        "lastModified": 1795625703,
+        "narHash": "sha256-WRhxDNep2oxQHz4YApooDpr/m3JkgESha8YWjhF7zaA=",
         "owner": "duxlabs-dev",
         "repo": "dux-plugin-registry",
-        "rev": "331ce1fb41236fcd5ac28e5e089f7f9e620b8a43",
+        "rev": "225439e6b4c9a5a5d6af6c1d8bb5a87761cd8435",
         "type": "github"
       },
       "original": {
@@ -588,11 +588,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1795556203,
-        "narHash": "sha256-H5pxeE8FGA06s57O+LO819JKKTa7PDtoAqKdFeUsARA=",
+        "lastModified": 1795629136,
+        "narHash": "sha256-+2UHvRZR/SC6ypUphFZEjeYZ/OSppsNjgOYetqSM7s4=",
         "owner": "duxlabs-dev",
         "repo": "dux-shell",
-        "rev": "b92033799aa33166aa919b9d183fe7764992df4d",
+        "rev": "98a936dfae2f1c43f64e024403b497f88d2408df",
         "type": "github"
       },
       "original": {
@@ -610,11 +610,11 @@
       },
       "locked": {
         "dir": "pkgs/firefox-addons",
-        "lastModified": 1795579382,
-        "narHash": "sha256-gWHGwbcyUxUmDhHaAdSBnBrOEgACNRy2GvEjQG7njPg=",
+        "lastModified": 1795603447,
+        "narHash": "sha256-jr22Koa5st3EoDs2BgnVTCLCILz0PNIRxv1jdhKGheo=",
         "ref": "refs/heads/master",
-        "rev": "e07dc67cab8e59a57aa833b025b859e008cf19fa",
-        "revCount": 5067,
+        "rev": "116ef18d400f41ecefeb2d378588503847aec1cf",
+        "revCount": 5068,
         "type": "git",
         "url": "https://gitlab.com/rycee/nur-expressions"
       },
@@ -1092,11 +1092,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1795534022,
-        "narHash": "sha256-xkRZ+PcPWaAyf9YrEBszYD5w2S6/Ac2tIfsufzd4dEQ=",
+        "lastModified": 1795618997,
+        "narHash": "sha256-d9Osol//t6hqeo1xlspsYMbhTJK507h6t0EmPyF5Db0=",
         "owner": "nix-community",
         "repo": "home-manager",
-        "rev": "b56bcd042b5e69ad188eca20d9bec1bfbf3dd453",
+        "rev": "6a13737c0ed27c7c285f59e3be423ed972aa605f",
         "type": "github"
       },
       "original": {
@@ -1177,11 +1177,11 @@
         "scenefx": "scenefx"
       },
       "locked": {
-        "lastModified": 1795585030,
-        "narHash": "sha256-sZ/rqKZ37p3/vmEm3ChgFahSSb29W9wfCZEgQxuVff4=",
+        "lastModified": 1795620409,
+        "narHash": "sha256-PhFc7w1Y+NthwWe2I5P42jDshIeQhbpJLbhV6TW6JAw=",
         "owner": "mangowm",
         "repo": "mango",
-        "rev": "469c4d6b0070b1fdab09256e54c9f9d9eff0e591",
+        "rev": "75fc5275a7679c72a29b239bd9c05cde69089789",
         "type": "github"
       },
       "original": {
@@ -1349,11 +1349,11 @@
         "tinted-theming": "tinted-theming"
       },
       "locked": {
-        "lastModified": 1795633747,
-        "narHash": "sha256-0stk0a/6qCh58nhkYlHbIYyqPfPgWEe3EVEzSoiqKKg=",
+        "lastModified": 1795646402,
+        "narHash": "sha256-xl9qFGwJHip+11W4mktHfpF/4SA5o5xArlQ0fDVqTkM=",
         "owner": "ojuny-project",
         "repo": "nix-settings-gui",
-        "rev": "4755b667816862b7d5114a6b8239198d4c2816da",
+        "rev": "880bac96ac2c3751e4a153f7592b22e2082116b8",
         "type": "github"
       },
       "original": {
@@ -1369,11 +1369,11 @@
         "tinted-theming": "tinted-theming_2"
       },
       "locked": {
-        "lastModified": 1795633747,
-        "narHash": "sha256-0stk0a/6qCh58nhkYlHbIYyqPfPgWEe3EVEzSoiqKKg=",
+        "lastModified": 1795646402,
+        "narHash": "sha256-xl9qFGwJHip+11W4mktHfpF/4SA5o5xArlQ0fDVqTkM=",
         "owner": "ojuny-project",
         "repo": "nix-settings-gui",
-        "rev": "4755b667816862b7d5114a6b8239198d4c2816da",
+        "rev": "880bac96ac2c3751e4a153f7592b22e2082116b8",
         "type": "github"
       },
       "original": {
@@ -1684,11 +1684,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1795633763,
-        "narHash": "sha256-a+gGaPl9Kh5aFnDEZUhq/4895o+p4dKNHWq9SJoc+1Y=",
+        "lastModified": 1795646426,
+        "narHash": "sha256-c9rcKA1OSCjxOSP7+6YvOBY+xvch+fzogLjSHVxWpLA=",
         "owner": "ojuny-project",
         "repo": "ojuny-cli",
-        "rev": "b8b89ef67af5d7b6dec8a6c709d42bd27f628561",
+        "rev": "867d71fa929cb4365af8e5d3c6af7e4629515974",
         "type": "github"
       },
       "original": {
@@ -1723,11 +1723,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1795595821,
-        "narHash": "sha256-NDTpYBWjXye/Gic6e4O+KJPXFwXsPCujsowQF1XsO+o=",
+        "lastModified": 1795646424,
+        "narHash": "sha256-XkJDtXz7qSqxZQiqwri/09oavSy46HOmAwoonB+G2pE=",
         "owner": "ojuny-project",
         "repo": "ojuny-desktop",
-        "rev": "ac3bf2ef8f37fb86b997f4ac0553f107da0a179d",
+        "rev": "ac72f2893717324375ad4ab2f87f9a585f421a16",
         "type": "github"
       },
       "original": {
@@ -1812,11 +1812,11 @@
         "stylix": "stylix"
       },
       "locked": {
-        "lastModified": 1795640935,
-        "narHash": "sha256-SgNJ6FBtfL09rq2PAcWtC5zhvobLuvKBTbBAlKUbc9s=",
+        "lastModified": 1795646459,
+        "narHash": "sha256-zuW0w6RcbhO8Ac68I9Qsc37o8655TGNa4sGkYJHBe/c=",
         "owner": "ojuny-project",
         "repo": "ojuny-template",
-        "rev": "8c3162c4dabfab5552eb81b5336a381d940f8dd7",
+        "rev": "8a3edf31ffe1ec1ae70698f4548c37db8c5f1bf2",
         "type": "github"
       },
       "original": {
@@ -1836,11 +1836,11 @@
         "tinted-theming": "tinted-theming_3"
       },
       "locked": {
-        "lastModified": 1795633752,
-        "narHash": "sha256-c0w6veqt2Vq6zMvWjeQKZH3vmPbuoLhEQMuLTSFaQ+Y=",
+        "lastModified": 1795646410,
+        "narHash": "sha256-tGJUeeiciAeU2uXfoE0yX2/lVGeZjRbQNbRQCP9J2hI=",
         "owner": "ojuny-project",
         "repo": "ojuny-welcome",
-        "rev": "00c66194bcc4689cd608f1e1e9cc148f4d72da55",
+        "rev": "f6e7419e79ae720e35f14659935630bfe684f474",
         "type": "github"
       },
       "original": {
