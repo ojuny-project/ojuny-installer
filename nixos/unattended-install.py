@@ -913,7 +913,7 @@ def write_gui_config(home, flake, host, shell):
     payload = {
         "flake_path": flake,
         "terminal_command": "ghostty -e {} -c".format(shell),
-        "rebuild_command": 'sudo echo "starting rebuild"; sudo nixos-rebuild switch --flake {}#{} |& nom; echo "finished build, press any button to close the window"; read -n 1'.format(
+        "rebuild_command": 'sudo echo "starting rebuild"; sudo rm -f /boot/loader/loader.tmp; sudo df -Pk /boot | awk \'NR==2 && $4 < 65536 { print "boot partition has " $4 " KiB free; clean old generations first"; exit 1 }\' || exit 1; sudo nixos-rebuild switch --flake {}#{} |& nom; echo "finished build, press any button to close the window"; read -n 1'.format(
             flake, host
         ),
         "reload_dms_on_rebuild": True,
