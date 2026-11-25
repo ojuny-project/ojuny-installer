@@ -11,7 +11,7 @@ fail() {
 }
 
 require() {
-    command -v "$1" >/dev/null 2>&1 || fail "missing command: $1"
+    command -v "$1"  || fail "missing command: $1"
 }
 
 firmware_path() {
@@ -32,7 +32,7 @@ resolve_iso() {
         return
     fi
     local found
-    found=$(ls result-installer/iso/*.iso 2>/dev/null | head -n1 || true)
+    found=$(ls result-installer/iso/*.iso  | head -n1 || true)
     [[ -n "$found" ]] || fail "no ISO found; pass --iso or build result-installer"
     printf '%s\n' "$found"
 }
@@ -47,12 +47,12 @@ create_disk() {
 
 cleanup_disk() {
     if [[ -n "$MOUNT_DIR" ]]; then
-        sudo umount "$MOUNT_DIR" 2>/dev/null || true
-        rmdir "$MOUNT_DIR" 2>/dev/null || true
+        sudo umount "$MOUNT_DIR"  || true
+        rmdir "$MOUNT_DIR"  || true
         MOUNT_DIR=""
     fi
     if [[ "$ATTACHED" == 1 ]]; then
-        sudo qemu-nbd --disconnect "$NBD_DEVICE" >/dev/null 2>&1 || true
+        sudo qemu-nbd --disconnect "$NBD_DEVICE"  || true
         ATTACHED=0
     fi
 }
@@ -82,10 +82,10 @@ mount_installed_root() {
     require qemu-nbd
     require lsblk
     sudo modprobe nbd max_part=16
-    sudo qemu-nbd --disconnect "$NBD_DEVICE" >/dev/null 2>&1 || true
+    sudo qemu-nbd --disconnect "$NBD_DEVICE"  || true
     sudo qemu-nbd --connect="$NBD_DEVICE" --read-only "$disk"
     ATTACHED=1
-    sudo partprobe "$NBD_DEVICE" 2>/dev/null || true
+    sudo partprobe "$NBD_DEVICE"  || true
 
     local root_part=""
     local attempt

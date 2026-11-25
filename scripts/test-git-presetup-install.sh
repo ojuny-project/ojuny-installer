@@ -82,7 +82,7 @@ if [[ "$check_only" == 0 ]]; then
     boot_vm "$iso" "$disk"
 fi
 
-mount_installed_root "$disk" >/dev/null
+mount_installed_root "$disk" 
 home="$MOUNT_DIR/home/$user"
 repo="$home/repos/nix-flake"
 

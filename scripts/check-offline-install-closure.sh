@@ -8,8 +8,8 @@ fi
 
 work="$(mktemp -d)"
 cleanup() {
-  chmod -R u+w "$work" 2>/dev/null || true
-  rm -rf "$work" 2>/dev/null || true
+  chmod -R u+w "$work"  || true
+  rm -rf "$work"  || true
 }
 trap cleanup EXIT
 
@@ -108,7 +108,7 @@ nix --extra-experimental-features "nix-command flakes" eval \
   --offline \
   --raw \
   "$work/flake#nixosConfigurations.fixture-host.config.system.build.toplevel.drvPath" \
-  >/dev/null
+  
 
 echo "evaluation succeeded against the preloaded flake inputs"
 

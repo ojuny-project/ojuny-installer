@@ -30,7 +30,7 @@ timeout_seconds="${TIMEOUT:-3600}"
 memory="${MEMORY:-4096}"
 cpus="${CPUS:-2}"
 
-if ! command -v qemu-system-x86_64 >/dev/null 2>&1; then
+if ! command -v qemu-system-x86_64 ; then
   echo "check-offline-install-vm: qemu-system-x86_64 not found" >&2
   exit 2
 fi
@@ -87,7 +87,7 @@ if [ ! -f "$iso" ]; then
   exit 2
 fi
 
-qemu-img create -f qcow2 "$work/disk.qcow2" 20G >/dev/null
+qemu-img create -f qcow2 "$work/disk.qcow2" 20G 
 
 qemu_args=(
   -m "$memory"

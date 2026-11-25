@@ -435,11 +435,11 @@ fi
 
 hashed_password=""
 if [ -n "$password" ]; then
-  if ! command -v mkpasswd >/dev/null 2>&1; then
+  if ! command -v mkpasswd ; then
     echo "make-unattended-iso: mkpasswd not found, run inside nix develop" >&2
     exit 1
   fi
-  hashed_password="$(mkpasswd -m yescrypt -- "$password" 2>/dev/null || mkpasswd -m sha-512 -- "$password")"
+  hashed_password="$(mkpasswd -m yescrypt -- "$password"  || mkpasswd -m sha-512 -- "$password")"
 fi
 
 if [ "${#ssh_keys[@]}" -eq 0 ] && [ "$ssh_prompted" -eq 0 ]; then

@@ -67,7 +67,7 @@ expect_credentials=no
 
 cleanup() {
     if [[ -n "$git_daemon_pid" ]]; then
-        kill "$git_daemon_pid" 2>/dev/null || true
+        kill "$git_daemon_pid"  || true
         git_daemon_pid=""
     fi
     cleanup_disk
@@ -106,7 +106,7 @@ if [[ "$check_only" == 0 ]]; then
     boot_vm "$iso" "$disk"
 fi
 
-mount_installed_root "$disk" >/dev/null
+mount_installed_root "$disk" 
 home="$MOUNT_DIR/home/$user"
 repo="$home/repos/nix-flake"
 

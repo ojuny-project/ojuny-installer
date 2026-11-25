@@ -5,7 +5,7 @@ repo="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repo"
 
 cores="${PRELOAD_CORES:-}"
-if [ -n "$cores" ] && command -v taskset >/dev/null 2>&1 && [ -z "${PRELOAD_TASKSET:-}" ]; then
+if [ -n "$cores" ] && command -v taskset  && [ -z "${PRELOAD_TASKSET:-}" ]; then
   export PRELOAD_TASKSET=1
   exec nice -n 10 taskset -c "0-$((cores - 1))" "$0" "$@"
 fi
@@ -14,12 +14,12 @@ parallel="${cores:-8}"
 system="x86_64-linux"
 work="$(mktemp -d)"
 previous="$work/previous-paths.txt"
-cp "$repo/nixos/preload-paths.txt" "$previous" 2>/dev/null || : >"$previous"
+cp "$repo/nixos/preload-paths.txt" "$previous"  || : >"$previous"
 keep=0
 cleanup() {
   if [ "$keep" -ne 1 ]; then
-    cp "$previous" "$repo/nixos/preload-paths.txt" 2>/dev/null || true
-    git -C "$repo" add nixos/preload-paths.txt 2>/dev/null || true
+    cp "$previous" "$repo/nixos/preload-paths.txt"  || true
+    git -C "$repo" add nixos/preload-paths.txt  || true
   fi
   rm -rf "$work"
 }
@@ -75,7 +75,7 @@ $body
 }
 EOF
   python3 "$root/scripts/flake_structure.py" --root "$root" --non-interactive ensure-imports \
-    --name system-hardware --name system-bootloader >/dev/null
+    --name system-hardware --name system-bootloader 
 }
 
 rewrite_lock() {
@@ -213,7 +213,7 @@ for round in 1 2 3 4 5 6 7 8 9 10; do
     break
   fi
   printf '%s\n' "${paths[@]}" |
-    xargs -P "$parallel" -I{} sh -c 'nix path-info --store https://cache.nixos.org "$1" >/dev/null 2>&1 && printf "%s\n" "$1" || true' _ {} |
+    xargs -P "$parallel" -I{} sh -c 'nix path-info --store https://cache.nixos.org "$1"  && printf "%s\n" "$1" || true' _ {} |
     sort -u >"$work/cached.txt"
   comm -23 <(printf '%s\n' "${paths[@]}" | sort -u) "$work/cached.txt" >"$work/uncached.txt"
   if [ ! -s "$work/uncached.txt" ]; then
@@ -233,7 +233,7 @@ fi
 
 echo "preloading ${#paths[@]} frontier paths"
 cp "$work/frontier.txt" "$repo/nixos/preload-paths.txt"
-git -C "$repo" add nixos/preload-paths.txt 2>/dev/null || true
+git -C "$repo" add nixos/preload-paths.txt  || true
 keep=1
 echo "wrote $repo/nixos/preload-paths.txt with ${#paths[@]} paths"
 echo "now build the ISO with: nix build .#ojuny-iso-offline"
