@@ -1812,11 +1812,11 @@
         "stylix": "stylix"
       },
       "locked": {
-        "lastModified": 1795619263,
-        "narHash": "sha256-RJhmr/z38qUzlpoznTTeSU7fsYfDyTWPIPscPPkq6Kg=",
+        "lastModified": 1795620124,
+        "narHash": "sha256-qIC3dQQupdzuGLS//PlZwGrmsLl6mCilv0xBtAm5Hgg=",
         "owner": "ojuny-project",
         "repo": "ojuny-template",
-        "rev": "59082686f6926c2de4afc64ef5c91027bf5095f6",
+        "rev": "49b1f5587087624b7f33770861bd059fd1bfc320",
         "type": "github"
       },
       "original": {
