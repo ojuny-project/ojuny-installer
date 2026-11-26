@@ -16,7 +16,8 @@ SCRATCH_BUDGET = 4 * GiB
 MISSING_ITEM_BUDGET = 8 * MiB
 LIVE_RESERVE = 256 * MiB
 MINIMUM_MEMORY_AVAILABLE = 64 * MiB
-STALL_SECONDS = 300
+STALL_SECONDS = 1800
+DEAD_STALL_SECONDS = 30
 
 
 class GuardFailure(RuntimeError):
@@ -241,18 +242,22 @@ class ResourceGuard:
             live = live_descendants(self._pid, table)
             if live:
                 self._saw_descendants = True
+            root = table.get(self._pid)
+            root_alive = root is not None and root["state"] not in ("Z", "X")
             ticks = self._tree_ticks(table)
             stalled = self.clock() - self._last_activity
+            threshold = self.stall_seconds if root_alive else DEAD_STALL_SECONDS
             if (
                 self._saw_descendants
                 and not live
                 and ticks == self._last_ticks
-                and stalled >= self.stall_seconds
+                and stalled >= threshold
             ):
                 return (
-                    "The build stopped responding: no output and no build process "
-                    "for {}. This usually means the build ran out of disk space or "
-                    "memory before finishing.".format(format_duration(stalled))
+                    "The build stopped responding: no output and no live build process "
+                    "for {}. The builder may be stuck or may have died.".format(
+                        format_duration(stalled)
+                    )
                 )
             self._last_ticks = ticks
 

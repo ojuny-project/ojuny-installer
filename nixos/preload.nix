@@ -112,6 +112,7 @@ let
     desktop.inputs.dux-search.packages.${hostSystem}.default
     desktop.inputs.ojuny-login-splash.packages.${hostSystem}.default
     shell.inputs.dux-qt-base.packages.${hostSystem}.default
+    target.pkgs.nix-output-monitor
   ];
 in
 {

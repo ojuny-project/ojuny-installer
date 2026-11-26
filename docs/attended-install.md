@@ -109,6 +109,13 @@ The live RAM layer therefore grows with the live session only, not with the
 template. A template that pulls a large input tree or builds a large artifact
 uses the target disk, not the installer's RAM.
 
+The live ISO store is also a local substituter for the target build. Any path
+already present in the live store is copied into the target store instead of
+being built again. Signature checks are disabled for that local substituter;
+`cache.nixos.org` remains in the substituter list. The custom
+`nom-cache-discovery` fork is prebuilt with the other Ojuny packages, so the
+base template does not rebuild it on the target.
+
 Before the build starts, and before the offline preload, the guard checks:
 
 - free space on the target filesystem against a floor plus an estimate built
@@ -117,12 +124,14 @@ Before the build starts, and before the offline preload, the guard checks:
 - free space on the live filesystem (256 MiB reserve),
 - `MemAvailable` (64 MiB floor).
 
-During `nixos-install`, the five second heartbeat samples the same values and
-counts live descendants of the Nix process. The install aborts with a blocking
-error when the target reserve is breached, the live layer reserve is breached,
-memory falls below the floor, or there has been no output and no live build
-process for 300 seconds. The last case is the dead builder that leaves the Nix
-client polling forever.
+During the target build and `nixos-install`, the five second heartbeat samples
+the same values and counts live descendants of the Nix process. The install
+aborts with a blocking error when the target reserve is breached, the live layer
+reserve is breached, or memory falls below the floor. It only aborts for a
+stalled build when there has been no output and no live build process for 30
+minutes, or for 30 seconds after the root Nix process has gone. A source build
+can be silent for a long time; the long window lets it finish while the Nix
+process is alive.
 
 The abort terminates the process group, writes the reason and the last 40
 output lines to `/tmp/ojuny-install.log`, and raises an error that Calamares

@@ -128,6 +128,39 @@ class RuntimeTest(unittest.TestCase):
         reason = guard.check()
         self.assertIn("stopped responding", reason)
 
+    def test_reports_stalled_build_after_root_exits(self):
+        table = {
+            10: process(1, state="S", ticks=100),
+            11: process(10, state="R", ticks=50),
+        }
+        guard, clock = make_guard(
+            50 * install_guard.GiB, memory=4 * install_guard.GiB, table=table
+        )
+        guard.start(10)
+        guard.check()
+        del table[11]
+        guard.check()
+        del table[10]
+        guard.check()
+        clock.advance(install_guard.DEAD_STALL_SECONDS + 10)
+        reason = guard.check()
+        self.assertIn("stopped responding", reason)
+
+    def test_ignores_stall_while_root_ticks_change(self):
+        table = {
+            10: process(1, state="S", ticks=100),
+            11: process(10, state="R", ticks=50),
+        }
+        guard, clock = make_guard(
+            50 * install_guard.GiB, memory=4 * install_guard.GiB, table=table
+        )
+        guard.start(10)
+        del table[11]
+        guard.check()
+        clock.advance(install_guard.STALL_SECONDS + 10)
+        table[10]["ticks"] = 900
+        self.assertIsNone(guard.check())
+
     def test_ignores_stall_while_build_process_is_alive(self):
         table = {
             10: process(1, state="S", ticks=100),
