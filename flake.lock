@@ -1787,11 +1787,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1795771651,
-        "narHash": "sha256-LO/gk1uOSqGtsrQaVzEDXeKEvFMxjJSn2z4sM9Jr8cA=",
+        "lastModified": 1795771787,
+        "narHash": "sha256-/XMu+57jAZs8/VTSQDzSO+smEWq4L/PaiZcvprv1L/0=",
         "owner": "ojuny-project",
         "repo": "ojuny-patches",
-        "rev": "6fd61711342fae543a25f3d5e18e72e0f591fc6a",
+        "rev": "14e4686ca1640c9dcc97abbe82df22ef8283ec0c",
         "type": "github"
       },
       "original": {
@@ -1834,11 +1834,11 @@
         "stylix": "stylix"
       },
       "locked": {
-        "lastModified": 1795771667,
-        "narHash": "sha256-hm7G5Sv5ASa4S8GSnkFtMHJyq5ds6vHOuwgfQ1IWiT0=",
+        "lastModified": 1795771804,
+        "narHash": "sha256-j/r9PGVHVR+G86gPcyeC6ToeDX51biag+YVsytlltI0=",
         "owner": "ojuny-project",
         "repo": "ojuny-template",
-        "rev": "456fa090757db53f30df659e5d3a117f728006ea",
+        "rev": "d5ea9fe8662f630267ad4b0c8ee30df57d704980",
         "type": "github"
       },
       "original": {
